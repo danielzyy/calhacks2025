@@ -43,11 +43,9 @@ def compute_end_effector_pos_from_joints(joint_angles):
 
     """
 
-    assert len(joint_angles) == len(ROBOT_DH_TABLES), "Joint angles length mismatch."
-
     T = []
     T_overall = np.eye(4)
-    for i in range(len(ROBOT_DH_TABLES)):
+    for i in range(len(joint_angles)):
         theta = joint_angles[i] + ROBOT_DH_TABLES[i][0]
         d = ROBOT_DH_TABLES[i][1]
         a = ROBOT_DH_TABLES[i][2]
