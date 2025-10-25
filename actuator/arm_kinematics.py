@@ -57,12 +57,12 @@ def compute_end_effector_pos_from_joints(joint_angles):
 
     # End effector position
     end_effector_pos = T_overall[:3, 3]
-    
     return end_effector_pos
 
 if __name__ == "__main__":
     # Test conversion functions
     dh_angles = np.zeros(5)
-    dh_angles = [0, 90, 0, 0, 0]
+    dh_angles = [0, 90, 0, 00, 0]
     dh_angles = np.deg2rad(dh_angles)
     compute_end_effector_pos_from_joints(dh_angles)
+    breakpoint()
