@@ -1,7 +1,20 @@
 import cv2
 import numpy as np
-import pupil_apriltags as apriltag
-detector = apriltag.Detector(families="tag36h11")
+
+class Item:
+    def __init__(self, name , idx):
+        self.name = name
+        self.idx = idx
+        self.x = 0
+        self.y = 0
+        self.size = 0
+    
+    def setPosition(self, x, y, size):
+        self.x = x
+        self.y = y
+        self.size = size
+
+items = [Item("cup", 0), Item("bowl", 1), Item("fruit", 2)]
 
 cam = cv2.VideoCapture(1)
 
@@ -30,16 +43,15 @@ while True:
     # Convert to grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # --- Improve robustness ---
-    # 1. Denoise slightly (helps with compression artifacts)
-    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    # denoise
+    # gray = cv2.GaussianBlur(gray, (3, 3), 0)
 
-    # 2. Increase contrast using adaptive histogram equalization
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    gray = clahe.apply(gray)
+    # # increase contrast
+    # clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    # gray = clahe.apply(gray)
 
-    # 3. Optional: sharpen edges a bit
-    gray = cv2.addWeighted(gray, 1.5, cv2.GaussianBlur(gray, (0, 0), 3), -0.5, 0)
+    # # sharpen
+    # gray = cv2.addWeighted(gray, 1.5, cv2.GaussianBlur(gray, (0, 0), 3), -0.5, 0)
 
     # Detect AprilTags
     corners, ids, rejected = detector.detectMarkers(gray)
@@ -73,10 +85,15 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
             # Print info
-            print(f"Tag ID: {tag_id}, Center: ({cX}, {cY}), Size: {avg_size:.1f}px")
+            for i in items:
+                if i.idx == tag_id:
+                    i.setPosition(cX, cY, avg_size)
+
+    for i in items:
+        print(f"Item {i.name}, ID: {i.idx}, Center: ({i.x}, {i.y}), Size: {i.size}px")
 
     # Show video
-    cv2.imshow("AprilTag Detection", frame)
+    cv2.imshow("Detection", frame)
 
     # Quit with 'q'
     if cv2.waitKey(1) & 0xFF == ord('q'):
