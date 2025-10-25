@@ -1,3 +1,8 @@
+# include parent dir
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import math
 import numpy as np
 from actuator.dh_table import *
@@ -53,3 +58,8 @@ def compute_end_effector_pos_from_joints(joint_angles):
     end_effector_pos = T[:3, 3]
 
     return end_effector_pos
+
+if __name__ == "__main__":
+    # Test conversion functions
+    dh_angles = np.array([np.zeros(5)])
+    breakpoint()

@@ -1,13 +1,14 @@
+# include parent dir
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
+from actuator.constants import *
 
 """See https://github.com/Argo-Robot/controls/tree/main for derivation"""
 
 # Follow this convention: theta , d, a, alpha
-L1 = 0.0304
-L2 = 0.0542
-L3 = 0.116
-L4 = 0.1347
-L5 = 0.0155  # including gripper length 
 ROBOT_DH_TABLES = [
         [0, L2, L1, np.pi / 2],
         [0, 0.0, L3, 0.0],
@@ -26,9 +27,9 @@ def dh_to_mech_angles(q_dh):
 
 def mech_to_dh_angles(q_mech):
     joint_1 = q_mech[0] * -1.0
-    joint_2 = q_mech[1]
-    joint_3 = q_mech[2]
-    joint_4 = q_mech[3]
+    joint_2 = q_mech[1] + beta
+    joint_3 = q_mech[2] - beta + np.pi/2
+    joint_4 = q_mech[3] * -1.0
     joint_5 = q_mech[4]
     return np.array([joint_1, joint_2, joint_3, joint_4, joint_5])
 
