@@ -1,5 +1,5 @@
 import pytest
-from actuator.arm_kinematics import *
+from actuator.kinematics.arm_kinematics import *
 
 def test_mech_to_dh_and_back():
     """Test conversion between mech and DH angles."""

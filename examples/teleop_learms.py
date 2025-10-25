@@ -6,9 +6,9 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from actuator.dh_table import *
-from actuator.arm_kinematics import *
-from actuator.constants import *
+from actuator.kinematics.dh_table import *
+from actuator.kinematics.arm_kinematics import *
+from actuator.kinematics.constants import *
 from actuator.utils.detect_serial import detect_so101_ports
 
 ports = detect_so101_ports()

@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
-from actuator.constants import *
+from actuator.kinematics.constants import *
 
 """See https://github.com/Argo-Robot/controls/tree/main for derivation"""
 

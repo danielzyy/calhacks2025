@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import math
 import numpy as np
-from actuator.dh_table import *
+from actuator.kinematics.dh_table import *
 
 def compute_inverse_kinematics_wrist_desired_pos(x, y, z):
     """Compute inverse kinematics for a 3DOF arm.
