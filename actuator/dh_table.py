@@ -18,12 +18,15 @@ ROBOT_DH_TABLES = [
 ]
 
 def dh_to_mech_angles(q_dh):
-    joint_1 = q_dh[0] * -1.0
-    joint_2 = q_dh[1]
-    joint_3 = q_dh[2]
-    joint_4 = q_dh[3]
-    joint_5 = q_dh[4]
-    return np.array([joint_1, joint_2, joint_3, joint_4, joint_5])
+    q_mech = np.zeros_like(q_dh)
+
+    q_mech[0] = -q_dh[0]
+    q_mech[1] = -q_dh[1] - beta + np.pi/2
+    q_mech[2] = -q_dh[2] + beta - np.pi/2
+    q_mech[3] = -q_dh[3] - np.pi/2
+    q_mech[4] =  q_dh[4]
+
+    return q_mech
 
 def mech_to_dh_angles(q_mech):
     joint_1 = q_mech[0] * -1.0
