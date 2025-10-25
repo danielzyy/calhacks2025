@@ -36,5 +36,5 @@ while True:
     for i in range(len(joint_angles_dh)):
         print("DH Angle - ", end="")
         print(f"{JOINT_NAMES_AS_INDEX[i]}: {np.rad2deg(joint_angles_dh[i]):.2f} degrees")
-    end_effector_pos = compute_end_effector_pos_from_joints(np.array(joint_angles))
-    print(f"End Effector Position: x={end_effector_pos[0]:.2f}, y={end_effector_pos[1]:.2f}, z={end_effector_pos[2]:.2f}")
+    end_effector_pos = compute_end_effector_pos_from_joints(np.array(joint_angles_dh))
+    print(f"End Effector Position: x={end_effector_pos[0]:.3f}, y={end_effector_pos[1]:.3f}, z={end_effector_pos[2]:.3f}")
