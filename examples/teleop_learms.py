@@ -11,16 +11,16 @@ from actuator.arm_kinematics import *
 from actuator.constants import *
 
 robot_config = SO101FollowerConfig(
-    port="/dev/ttyACM0",
-    id="follower_arm2",
+    port="/dev/ttyACM1",
+    id="follower_arm5",
 )
 
 robot = SO101Follower(robot_config)
 robot.connect()
 
 teleop_config = SO101LeaderConfig(
-    port="/dev/ttyACM1",
-    id="leader_arm2",
+    port="/dev/ttyACM0",
+    id="leader_arm4",
 )
 teleop_device = SO101Leader(teleop_config)
 teleop_device.connect()

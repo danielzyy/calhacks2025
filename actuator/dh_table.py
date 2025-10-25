@@ -27,12 +27,11 @@ def dh_to_mech_angles(q_dh):
 
 def mech_to_dh_angles(q_mech):
     joint_1 = q_mech[0] * -1.0
-    joint_2 = q_mech[1] + beta
-    joint_3 = q_mech[2] - beta + np.pi/2
+    joint_2 = -q_mech[1] - beta + np.pi/2
+    joint_3 = -q_mech[2] + beta - np.pi/2
     joint_4 = q_mech[3] * -1.0
     joint_5 = q_mech[4]
     return np.array([joint_1, joint_2, joint_3, joint_4, joint_5])
-
 
 def dh_transform_matrix(theta, d, a, alpha):
     """Compute the Denavit-Hartenberg transformation matrix.

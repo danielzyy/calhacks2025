@@ -43,23 +43,24 @@ def compute_end_effector_pos_from_joints(joint_angles):
 
     """
 
-    theta1, theta2, theta3, theta4, theta5 = joint_angles
+    assert len(joint_angles) == len(ROBOT_DH_TABLES), "Joint angles length mismatch."
 
-    T1 = dh_transform_matrix(joint_angles[0], L2, L1, np.pi / 2)
-    T2 = dh_transform_matrix(joint_angles[1], 0, L3, 0)
-    T3 = dh_transform_matrix(joint_angles[2], 0, L4, 0)
-    T4 = dh_transform_matrix(joint_angles[3], 0, 0, -np.pi / 2)
-    T5 = dh_transform_matrix(joint_angles[4], L5, 0, 0)
-
-    # Overall transformation matrix
-    T = T1 @ T2 @ T3 @ T4 @ T5
+    T = []
+    T_overall = np.eye(4)
+    for i in range(len(ROBOT_DH_TABLES)):
+        theta = joint_angles[i] + ROBOT_DH_TABLES[i][0]
+        d = ROBOT_DH_TABLES[i][1]
+        a = ROBOT_DH_TABLES[i][2]
+        alpha = ROBOT_DH_TABLES[i][3]
+        T.append(dh_transform_matrix(theta, d, a, alpha))
+        T_overall = T_overall @ T[-1]
 
     # End effector position
-    end_effector_pos = T[:3, 3]
+    end_effector_pos = T_overall[:3, 3]
 
     return end_effector_pos
 
 if __name__ == "__main__":
     # Test conversion functions
-    dh_angles = np.array([np.zeros(5)])
-    breakpoint()
+    dh_angles = np.zeros(5)
+    compute_end_effector_pos_from_joints(dh_angles)
