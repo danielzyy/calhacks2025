@@ -4,6 +4,7 @@ from lerobot.robots.so101_follower import SO101FollowerConfig, SO101Follower
 from enum import Enum
 import click
 import argparse
+from dataclasses import dataclass
 
 # Add the parent directory to the Python path
 import sys
@@ -20,6 +21,19 @@ class Mode(Enum):
     FULL_TELEOP = "FULL_TELEOP"
     ELBOW_CONTROL_ONLY_TELEOP = "ELBOW_CONTROL_ONLY_TELEOP"
     AUTONOMOUS = "AUTONOMOUS"
+
+@dataclass
+class ActuatorLayerRequest:
+    x_m: float
+    y_m: float
+    z_m: float
+    wrist_angle_rad: float # angle at which the wrist will approach a target end point
+    gripper_cmd: float # 0.0 to 1.0, where 0.0 is fully open and 1.0 is fully closed
+
+    def validate(self):
+        assert self.gripper_cmd >= 0.0 and self.gripper_cmd <= 1.0, "Gripper command must be between 0.0 and 1.0"
+        assert self.z >= 0.0, "Z coordinate must be non-negative"
+        assert self.x >= 0.0, "X coordinate must be non-negative"
     
 class ActuatorLayer:
     def __init__(self, mode, dry_run=False, use_visualizer=False):
@@ -49,10 +63,15 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
+        self.request = ActuatorLayerRequest(0.3, 0.0, 0.05, 0.0, 0.1)
+        self.request_fresh = False
+
+        # misc
+        self.gripper_cmd_scale_y = [0.1027924, 1.7260]
+
     def run_full_teleop(self):
         action = self.teleop_dh_joint_angles_actual_rad
-        return action
-        
+        return action        
 
     def run_elbow_control_only_teleop(self):
         
@@ -103,6 +122,7 @@ class ActuatorLayer:
         joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
+        print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
         self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
         # print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
 
@@ -112,6 +132,10 @@ class ActuatorLayer:
         self.teleop_dh_joint_angles_actual_rad = mech_to_dh_angles(self.teleop_mech_joint_angles_actual_rad)
         self.teleop_end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.teleop_dh_joint_angles_actual_rad))
 
+    def request_position(self, request: ActuatorLayerRequest):
+        self.request = request
+        self.request_fresh = True
+
     def step(self):
         self.update_robot_state()
 
@@ -119,6 +143,8 @@ class ActuatorLayer:
             joint_angle_cmd = self.run_full_teleop()
         elif self.mode == Mode.ELBOW_CONTROL_ONLY_TELEOP:
             joint_angle_cmd = self.run_elbow_control_only_teleop()
+        elif self.mode == Mode.AUTONOMOUS:
+            joint_angle_cmd = self.run_autonomous()
         else:
             raise NotImplementedError("Only FULL_TELEOP mode is implemented.")
         
