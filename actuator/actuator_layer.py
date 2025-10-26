@@ -2,6 +2,7 @@ import numpy as np
 from lerobot.teleoperators.so101_leader import SO101LeaderConfig, SO101Leader
 from lerobot.robots.so101_follower import SO101FollowerConfig, SO101Follower
 from enum import Enum
+import click
 import argparse
 
 # Add the parent directory to the Python path
@@ -58,12 +59,20 @@ class ActuatorLayer:
         leader_arm_elbow_location =compute_end_effector_pos_from_joints(
             self.teleop_dh_joint_angles_actual_rad[:3]
         )
+
+        if get_euclidian_distance(
+            leader_arm_elbow_location[0],
+            leader_arm_elbow_location[1]
+        ) < L5:
+            click.secho(f"Warning: target position of {leader_arm_elbow_location} ignored as it is too close to the base", fg="yellow")
+            return self.teleop_dh_joint_angles_actual_rad
         
         # solve for the required elbow joint angle to reach this position
-        ik_solution = compute_inverse_kinematics_elbow_desired_pos(
+        ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
             leader_arm_elbow_location[0],
             leader_arm_elbow_location[1],
             leader_arm_elbow_location[2],
+            wrist_angle=0.0
         )
 
         # send only the elbow joint command to the follower arm
@@ -71,12 +80,6 @@ class ActuatorLayer:
         for i in range(len(ik_solution)):
             joint_cmd_dh[i] = ik_solution[i]
 
-        # theta_2 + theta_3 + theta_4 = theta_5
-        # constrain theta_5 to be -pi/2 to keep wrist flat
-        # therefore, set -pi/2 = theta_2 + theta_3 + theta_4
-        # => theta_4 = -pi/2 - theta_2 - theta_3
-
-        joint_cmd_dh[3] = -np.pi/2 - (joint_cmd_dh[1] + joint_cmd_dh[2])
         joint_cmd_dh[4] = self.teleop_dh_joint_angles_actual_rad[4]
         joint_cmd_dh[5] = self.teleop_dh_joint_angles_actual_rad[5]  # gripper
 
