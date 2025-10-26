@@ -70,7 +70,7 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.1, 0.0, 0.15, np.deg2rad(90.0), 0.1)
+        self.request = ActuatorLayerRequest(0.17, 0.0, 0.05, np.deg2rad(90.0), 0.1)
         self.request_fresh = True
 
         self.speed_limit_m_per_s = 0.4  # m/s
@@ -93,7 +93,7 @@ class ActuatorLayer:
         joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
-        print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
+        # print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
         self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
         print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
 
@@ -131,9 +131,9 @@ class ActuatorLayer:
         )
 
         if not self.is_commanded_location_safe(
-            target_elbow_location[0],
-            target_elbow_location[1],
-            target_elbow_location[2]
+            self.teleop_end_effector_pos[0],
+            self.teleop_end_effector_pos[1],
+            self.teleop_end_effector_pos[2]
         ):
             return self.dh_joint_angles_actual_rad
         
@@ -182,7 +182,7 @@ class ActuatorLayer:
         )
         self.request_fresh = False
 
-        if not self.is_commanded_location_safe(x, y, z):
+        if not self.is_commanded_location_safe(*request_pos):
             return self.dh_joint_angles_actual_rad
         
         wrist_approach_angle = -np.pi/4 # flat approach

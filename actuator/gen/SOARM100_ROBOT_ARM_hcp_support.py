@@ -20,7 +20,7 @@ HCP_DEVICE_JSON = { 'available_commands': { 'control_grip': { 'freetext_desc': '
                                                          'given in mm. Max '
                                                          'range is - x: [0, '
                                                          '250], y: [-250, '
-                                                         '250], z: [0, 200] '
+                                                         '250], z: [-100, 170] '
                                                          'mm.',
                                         'params': [ {'x': 'int'},
                                                     {'y': 'int'},
@@ -29,10 +29,15 @@ HCP_DEVICE_JSON = { 'available_commands': { 'control_grip': { 'freetext_desc': '
                                                                 'wrist angle '
                                                                 'of the '
                                                                 'gripper in '
-                                                                'degrees. 0deg '
-                                                                'is flat, '
+                                                                'degrees. '
                                                                 '90deg is '
-                                                                'vertical.',
+                                                                'flat, with '
+                                                                'positive '
+                                                                'angles '
+                                                                'rotating '
+                                                                'counter-clockwise. '
+                                                                '0 0 is '
+                                                                'vertical up.',
                                                'params': [{'angle': 'float'}]}},
   'metadata': { 'device_id': 'SOARM100_ROBOT_ARM',
                 'freetext_desc': 'A robot arm capable of moving in 3D space '

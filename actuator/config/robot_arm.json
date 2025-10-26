@@ -5,7 +5,7 @@
   },
   "available_commands": {
     "move_arm": {
-      "freetext_desc": "Moves the arm to the specified 3D coordinates, each given in mm. Max range is - x: [0, 250], y: [-250, 250], z: [0, 200] mm.",
+      "freetext_desc": "Moves the arm to the specified 3D coordinates, each given in mm. Max range is - x: [0, 250], y: [-250, 250], z: [-100, 170] mm.",
       "params": [
         { "x": "int" },
         { "y": "int" },
@@ -19,7 +19,7 @@
       ]
     },
     "set_wrist_angle": {
-      "freetext_desc": "Sets the wrist angle of the gripper in degrees. 0deg is flat, 90deg is vertical.",
+      "freetext_desc": "Sets the wrist angle of the gripper in degrees. 90deg is flat, with positive angles rotating counter-clockwise. 0 0 is vertical up.",
       "params": [
         { "angle": "float" }
       ]
