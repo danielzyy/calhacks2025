@@ -120,6 +120,17 @@ class HCPExecutor:
             lines.append(f" - {action_name}({param_str}) → {action_info['description']}")
         
         return "\n".join(lines)
+    
+    def get_all_devices_llm_context_str(self) -> str:
+        """Return all registered devices and actions in an LLM-friendly string format."""
+        if not self.devices:
+            return "No devices are currently registered."
+        
+        lines = []
+        for device_id in self.devices.keys():
+            lines.append(self.get_device_llm_context_str(device_id))
+            lines.append("")  # blank line between devices
+        return "\n".join(lines)
 
     # ---------- Query helpers ----------
     def list_devices(self) -> Dict[str, Dict[str, Any]]:
