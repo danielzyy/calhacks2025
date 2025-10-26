@@ -5,13 +5,13 @@ Run: python hcp_ui.py
 Dependencies: flask flask_socketio eventlet
     pip install flask flask_socketio eventlet
 """
+import eventlet
+eventlet.monkey_patch()
 
 import time
 from flask import Flask, render_template_string, request, jsonify
 from flask_socketio import SocketIO, emit
 import uuid
-import eventlet
-eventlet.monkey_patch()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hcp-ui-secret'
@@ -110,22 +110,28 @@ INDEX_HTML = """
     const llm = document.createElementNS('http://www.w3.org/2000/svg','g');
     const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
     circle.setAttribute('cx',cx);circle.setAttribute('cy',cy);
-    circle.setAttribute('r',42);circle.setAttribute('fill','none');
-    circle.setAttribute('stroke','#7c5cff');circle.setAttribute('stroke-width','1.5');
+    circle.setAttribute('r',48); // slightly larger center node
+    circle.setAttribute('fill','none');
+    circle.setAttribute('stroke','#7c5cff');
+    circle.setAttribute('stroke-width','1.8');
     llm.appendChild(circle);
     const text = document.createElementNS('http://www.w3.org/2000/svg','text');
     text.setAttribute('x',cx);text.setAttribute('y',cy+5);
-    text.setAttribute('text-anchor','middle');text.setAttribute('fill','white');
-    text.setAttribute('font-size','12');text.textContent='HCP LLM';
-    llm.appendChild(text); svg.appendChild(llm);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('fill','white');
+    text.setAttribute('font-size','13');
+    text.textContent='HCP LLM';
+    llm.appendChild(text);
+    svg.appendChild(llm);
 
     const keys = Object.keys(devices);
     keys.forEach((id,i)=>{
       const angle=(i/keys.length)*2*Math.PI;
-      const dist=160+(keys.length*6);
+      const dist=180+(keys.length*6);
       const x=cx+Math.cos(angle)*dist;
       const y=cy+Math.sin(angle)*dist;
 
+      // connecting line
       const line=document.createElementNS('http://www.w3.org/2000/svg','line');
       line.setAttribute('x1',cx);line.setAttribute('y1',cy);
       line.setAttribute('x2',x);line.setAttribute('y2',y);
@@ -134,26 +140,46 @@ INDEX_HTML = """
       line.setAttribute('id','line-'+id);
       svg.appendChild(line);
 
+      // node group
       const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-      g.setAttribute('transform',`translate(${x-36},${y-20})`);
+      g.setAttribute('transform',`translate(${x-50},${y-28})`);
       g.setAttribute('data-id',id);
 
       const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      rect.setAttribute('width',72);rect.setAttribute('height',40);
-      rect.setAttribute('rx',8);
-      rect.setAttribute('fill','rgba(255,255,255,0.02)');
+      rect.setAttribute('width',100);
+      rect.setAttribute('height',56);
+      rect.setAttribute('rx',10);
+      rect.setAttribute('fill','rgba(255,255,255,0.03)');
       rect.setAttribute('stroke','rgba(255,255,255,0.08)');
       rect.setAttribute('id','node-'+id);
       g.appendChild(rect);
 
-      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x',36);t.setAttribute('y',23);
-      t.setAttribute('text-anchor','middle');
-      t.setAttribute('fill','white');
-      t.setAttribute('font-size','11');
-      t.setAttribute('style','white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:72px');
-      t.textContent = devices[id].device_id.length > 10 ? devices[id].device_id.slice(0,10)+"…" : devices[id].device_id;
-      g.appendChild(t);
+      // multi-line text wrapping
+      const label = devices[id].device_id;
+      const maxLineLength = 12;
+      const lines = [];
+      for (let i=0; i<label.length; i+=maxLineLength){
+        lines.push(label.slice(i, i+maxLineLength));
+        if (lines.length === 2) break; // max 2 lines
+      }
+
+      const textEl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      textEl.setAttribute('x',50);
+      textEl.setAttribute('y',lines.length === 1 ? 33 : 26);
+      textEl.setAttribute('text-anchor','middle');
+      textEl.setAttribute('fill','white');
+      textEl.setAttribute('font-size','11');
+      textEl.setAttribute('font-family','Inter, sans-serif');
+
+      lines.forEach((lineText, idx)=>{
+        const tspan = document.createElementNS('http://www.w3.org/2000/svg','tspan');
+        tspan.setAttribute('x',50);
+        tspan.setAttribute('dy', idx === 0 ? 0 : 12);
+        tspan.textContent = lineText;
+        textEl.appendChild(tspan);
+      });
+
+      g.appendChild(textEl);
       svg.appendChild(g);
     });
 
