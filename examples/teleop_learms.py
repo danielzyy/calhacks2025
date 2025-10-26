@@ -15,7 +15,7 @@ ports = detect_so101_ports()
 
 robot_config = SO101FollowerConfig(
     port=ports["follower_port"],
-    id="follower_arm5",
+    id="follower_arm6",
 )
 
 robot = SO101Follower(robot_config)
