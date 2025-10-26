@@ -95,7 +95,7 @@ class ActuatorLayer:
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
         # print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
         self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
-        print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+        # print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
 
         if self.mode != Mode.AUTONOMOUS:
             teleop_joint_positions = self.teleop_device.get_action()
@@ -165,6 +165,7 @@ class ActuatorLayer:
             self.request_fresh = False
         # don't validate here... assume the user has done it
         request_pos = np.array([self.request.x_m, self.request.y_m, self.request.z_m])
+
         target_end_effector_location = get_instantenous_controller_target(
             current_pos=self.end_effector_pos,
             target_pos=request_pos,
