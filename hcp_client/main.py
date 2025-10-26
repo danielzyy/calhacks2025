@@ -5,38 +5,74 @@ import time
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Callable
+import hcp_executor
+import json
+import asi1client
+
+hcp = hcp_executor.HCPExecutor()
+
+try:
+    client = ASI1Client()
+except ASI1ClientError as e:
+    print(f"Error initializing ASI1Client: {e}")
+
+messages = [
+    {"role": "system", "content": "You are a helpful AI assistant that can control hardware if asked."}
+]
 
 HOST = '127.0.0.1'
 PORT = 65432
 
+def bytes_to_json(byte_string):
+    """
+    Convert a byte string to a Python dictionary (parsed JSON).
+    Handles both UTF-8 decoding and JSON parsing errors.
+    """
+    try:
+        # Step 1: Decode bytes to string
+        decoded_str = byte_string.decode('utf-8')
+        
+        # Step 2: Clean up if there are stray characters (optional)
+        decoded_str = decoded_str.strip()
+
+        # Step 3: Parse JSON
+        data = json.loads(decoded_str)
+        return data
+
+    except UnicodeDecodeError:
+        print("Error: Could not decode bytes to UTF-8 string.")
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON data — {e}")
+
+def convert_command(device_id, command_name, command_data):
+    # Map string types to Python equivalents
+    type_map = {
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "str": str
+    }
+
+    # Extract the description
+    description = command_data.get("freetext_desc", "")
+
+    # Build the parameter list as tuples (name, python_type)
+    params = []
+    for p in command_data.get("params", []):
+        for k, v in p.items():
+            params.append((k, type_map.get(v, str)))
+
+    # Return your target structure
+    return (
+        device_id,              # fixed platform name
+        command_name,                    # command name
+        description,              # human description
+        params                    # typed parameter list
+    )
+
 # =========================
 # User-provided hooks (fill these)
 # =========================
-
-def get_connecting_message(addr: tuple) -> bytes | None:
-    """
-    Called during CONNECTING when a new client connects.
-    Return the bytes you want to send immediately to this client,
-    or None to send nothing.
-    """
-    # Example:
-    # return f"welcome {addr[0]}:{addr[1]}".encode()
-    return f"GET_API".encode()
-
-def on_client_data(addr: tuple, data: bytes) -> None:
-    """
-    Called whenever any client sends data (in CONNECTING and RUNNING).
-    Do whatever you want with data here.
-    """
-    # Example:
-    if data.startswith(b"API_SCHEMA"):
-        print("API SCHEMA received")
-        # fill array of available commands
-    elif data == b"COMPLETE":
-        print("Action complete confirmation received")
-        # let MCP know action is done
-    print(f"[hook] from {addr}: {data!r}")
-    pass
 
 def running_tick(send_to: Callable[[tuple, bytes], None],
                  broadcast: Callable[[bytes], None],
@@ -46,10 +82,17 @@ def running_tick(send_to: Callable[[tuple, bytes], None],
     Use send_to/broadcast/list_clients from here to drive real-time behavior.
     Keep it quick/non-blocking.
     """
-    # Example (no-op):
-    # for a in list_clients():
-    #     send_to(a, b"ping")
-    pass
+    try:
+        response = client.chat_completion(messages)
+        ai_reply = response["choices"][0]["message"]["content"].strip()
+        messages.append({"role": "assistant", "content": ai_reply})
+        action = json.loads(ai_reply)
+        hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"])
+    except ASI1ClientError as e:
+        print(f"[Error] {e}")
+    except Exception as e:
+        print(f"[Unexpected error] {e}")
+    
 
 # =========================
 # Internal plumbing
@@ -171,14 +214,27 @@ def start_server():
                     if evt.kind == 'connect':
                         print(f"[+] {evt.addr} connected")
                         if state == State.CONNECTING:
-                            # Send your connecting message (if any)
-                            msg = get_connecting_message(evt.addr)
-                            if msg:
-                                send_to(evt.addr, msg)
+                            # Send GET_API request on startup
+                            msg_json = """
+                            {
+                                "action": "REQUEST_HCP_DATA",
+                                "payload": \{\}
+                            }
+                            """
+                            msg = msg_json.encode()
+                            send_to(evt.addr, msg)
 
                     elif evt.kind == 'data':
                         # Always deliver data to your handler
-                        on_client_data(evt.addr, evt.payload)
+                        if state == State.CONNECTING:
+                            json_payload = bytes_to_json(evt.payload)
+                            metadata = json_payload["metadata"]
+                            available_commands = json_payload["available_commands"]
+                            hcp.register_device(metadata["device_id"], metadata["freetext_desc"], evt.addr)
+                            for command_name, command_data in available_commands.items():
+                                hcp.register_action(convert_command(metadata["device_id"], command_name, command_data))
+                        elif state == State.RUNNING:
+                            messages.append("Response from device: " + str(evt.payload))
 
                     elif evt.kind == 'disconnect':
                         print(f"[-] {evt.addr} disconnected")
