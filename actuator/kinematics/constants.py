@@ -15,6 +15,6 @@ L1 = 0.0304
 L2 = 0.0542
 L3 = 0.116
 L4 = 0.1347
-L5 = 0.0155  # including gripper length 
+L5 = 0.155 # including gripper length 
 
 beta = np.deg2rad(14.45)  # make reference to dh2.png in README.md

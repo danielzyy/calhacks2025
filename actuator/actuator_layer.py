@@ -93,9 +93,9 @@ class ActuatorLayer:
         joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
-        # print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
+        print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
         self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
-        # print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+        print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
 
         if self.mode != Mode.AUTONOMOUS:
             teleop_joint_positions = self.teleop_device.get_action()
@@ -123,14 +123,9 @@ class ActuatorLayer:
         return action        
 
     def run_elbow_control_only_teleop(self):
-        
-        leader_arm_elbow_location =compute_end_effector_pos_from_joints(
-            self.teleop_dh_joint_angles_actual_rad[:3]
-        )
-
         target_elbow_location = get_instantenous_controller_target(
             current_pos=self.end_effector_pos,
-            target_pos=leader_arm_elbow_location,
+            target_pos=self.teleop_end_effector_pos,
             linear_speed=self.speed_limit_m_per_s,
             dt=self.dt_measured
         )
@@ -140,7 +135,7 @@ class ActuatorLayer:
             target_elbow_location[1],
             target_elbow_location[2]
         ):
-            return self.teleop_dh_joint_angles_actual_rad
+            return self.dh_joint_angles_actual_rad
         
         # solve for the required elbow joint angle to reach this position
         ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
@@ -152,8 +147,8 @@ class ActuatorLayer:
 
         # if any ik solution is NaN, ignore the command
         if np.isnan(ik_solution).any():
-            click.secho(f"Warning: IK solution resulted in NaN for target position of {leader_arm_elbow_location}, ignoring command", fg="yellow")
-            return self.teleop_dh_joint_angles_actual_rad
+            click.secho(f"Warning: IK solution resulted in NaN for target position of {self.teleop_end_effector_pos}, ignoring command", fg="yellow")
+            return self.dh_joint_angles_actual_rad
 
         # send only the elbow joint command to the follower arm
         joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
