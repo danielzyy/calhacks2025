@@ -70,7 +70,7 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.5)
+        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, np.deg2rad(90.0), 0.5)
         self.request_fresh = True
 
         self.speed_limit_m_per_s = 0.6  # m/s

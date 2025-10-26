@@ -9,6 +9,8 @@ JOINT_NAMES_AS_INDEX = [
     "gripper",
 ]
 
+WRIST_ROLL_MULTIPLIER = 1.6028533
+
 L1 = 0.0304
 L2 = 0.0542
 L3 = 0.116

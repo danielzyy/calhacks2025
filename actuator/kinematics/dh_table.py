@@ -25,7 +25,7 @@ def dh_to_mech_angles(q_dh):
     q_mech[1] = -q_dh[1] - beta + np.pi/2
     q_mech[2] = -q_dh[2] + beta - np.pi/2
     q_mech[3] = -q_dh[3] - np.pi/2
-    q_mech[4] =  q_dh[4]
+    q_mech[4] =  q_dh[4] / WRIST_ROLL_MULTIPLIER * -1.0
     q_mech[5] = q_dh[5]  # gripper
 
     return q_mech
@@ -35,7 +35,7 @@ def mech_to_dh_angles(q_mech):
     joint_2 = q_mech[1] * -1.0 - beta + np.pi/2
     joint_3 = q_mech[2] * -1.0 + beta - np.pi/2
     joint_4 = q_mech[3] * -1.0 - np.pi/2
-    joint_5 = q_mech[4]
+    joint_5 = q_mech[4] * WRIST_ROLL_MULTIPLIER * -1.0
     joint_6 = q_mech[5]  # gripper
     return np.array([joint_1, joint_2, joint_3, joint_4, joint_5, joint_6])
 
