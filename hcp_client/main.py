@@ -6,8 +6,9 @@ from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Callable
 import hcp_executor
+from hcp_executor import Client
 import json
-import asi1client
+from asi1client import ASI1Client, ASI1ClientError
 import re
 
 hcp = hcp_executor.HCPExecutor()
@@ -20,9 +21,12 @@ except ASI1ClientError as e:
 messages = []
 
 ready_for_user_input = False
+retryCount = 0
 
 HOST = '127.0.0.1'
-PORT = 65432
+PORT = 9000
+
+MAX_MALFORMED_MESSAGE_RETRY = 3
 
 def extract_dashed_section(text):
     """
@@ -92,53 +96,6 @@ def convert_command(device_id, command_name, command_data):
     )
 
 # =========================
-# User-provided hooks (fill these)
-# =========================
-
-def running_tick(send_to: Callable[[tuple, bytes], None],
-                 broadcast: Callable[[bytes], None],
-                 list_clients: Callable[[], list[tuple]]) -> None:
-    """
-    Called repeatedly during RUNNING (very frequently).
-    Use send_to/broadcast/list_clients from here to drive real-time behavior.
-    Keep it quick/non-blocking.
-    """
-    if ready_for_user_input:
-        try:
-            user_input = input("You: ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nExiting...")
-            exit(0)
-
-        if user_input.lower() in {"exit", "quit"}:
-            print("Goodbye!")
-            exit(0)
-
-        if not user_input:
-            return
-        
-        messages.append({"role": "user", "content": user_input})
-        ready_for_user_input = False
-    else:
-        # Add user message to history
-        try:
-            response = client.chat_completion(messages)
-            ai_reply = response["choices"][0]["message"]["content"].strip()
-            messages.append({"role": "assistant", "content": ai_reply})
-            inside, outside, isCommand = extract_dashed_section(ai_reply)
-            print(f"AI: {outside}\n")
-            if not isCommand:
-                ready_for_user_input = True
-                return
-            action = json.loads(inside)
-            if (hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"]))
-        except ASI1ClientError as e:
-            print(f"[Error] {e}")
-        except Exception as e:
-            print(f"[Unexpected error] {e}")
-    
-
-# =========================
 # Internal plumbing
 # =========================
 
@@ -148,13 +105,6 @@ class ClientEvent:
     addr: tuple
     payload: bytes | None = None
     error: Exception | None = None
-
-@dataclass
-class Client:
-    conn: socket.socket
-    addr: tuple
-    thread: threading.Thread
-    alive: bool = field(default=True)
 
 class State(Enum):
     STARTUP = auto()
@@ -183,6 +133,56 @@ def start_server():
     event_q: queue.Queue[ClientEvent] = queue.Queue()
     clients: dict[tuple, Client] = {}
     clients_lock = threading.Lock()
+
+    def running_tick() -> None:
+        """
+        Called repeatedly during RUNNING (very frequently).
+        Use send_to/broadcast/list_clients from here to drive real-time behavior.
+        Keep it quick/non-blocking.
+        """
+        if ready_for_user_input:
+            try:
+                user_input = input("You: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nExiting...")
+                exit(0)
+
+            if user_input.lower() in {"exit", "quit"}:
+                print("Goodbye!")
+                exit(0)
+
+            if not user_input:
+                return
+            
+            messages.append({"role": "user", "content": user_input})
+            ready_for_user_input = False
+        else:
+            # Add user message to history
+            try:
+                response = client.chat_completion(messages)
+                ai_reply = response["choices"][0]["message"]["content"].strip()
+                messages.append({"role": "assistant", "content": ai_reply})
+                inside, outside, isCommand = extract_dashed_section(ai_reply)
+                print(f"AI: {outside}\n")
+                if not isCommand:
+                    ready_for_user_input = True
+                    return
+                action = json.loads(inside)
+                with clients_lock:
+                    if (False == hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"])):
+                        if retryCount < MAX_MALFORMED_MESSAGE_RETRY:
+                            retryCount += 1
+                            print(f"AI: Malformed command JSON. Retrying ({retryCount}/{MAX_MALFORMED_MESSAGE_RETRY})...\n")
+                            messages.append({"role": "user", "content": "ERROR: Malformed message. Check your message structure against the system prompt and try again without prompting the user."})
+                        else:
+                            messages.append({"role": "user", "content": "ERROR: Message is continously malformed. Stop retrying and instructor the user that you were unable to send a command and that they should retry."})
+                    else:
+                        retryCount = 0
+            except ASI1ClientError as e:
+                print(f"[Error] {e}")
+            except Exception as e:
+                print(f"[Unexpected error] {e}")
+    
 
     def accept_loop(server_sock: socket.socket):
         while True:
@@ -236,8 +236,8 @@ def start_server():
                 # --- state transitions ---
                 if state == State.STARTUP:
                     # Immediately go to CONNECTING and start 5s window
-                    connecting_deadline = now + 25.0
-                    print("[state] STARTUP -> CONNECTING (25s window)")
+                    connecting_deadline = now + 10.0
+                    print("[state] STARTUP -> CONNECTING (10s window)")
                     state = State.CONNECTING
 
                 elif state == State.CONNECTING and now >= connecting_deadline:
@@ -276,7 +276,7 @@ def start_server():
                             json_payload = bytes_to_json(evt.payload)
                             metadata = json_payload["metadata"]
                             available_commands = json_payload["available_commands"]
-                            hcp.register_device(metadata["device_id"], metadata["freetext_desc"], evt.addr)
+                            hcp.register_device(metadata["device_id"], metadata["freetext_desc"], evt.addr, clients.get(evt.addr))
                             for command_name, command_data in available_commands.items():
                                 hcp.register_action(convert_command(metadata["device_id"], command_name, command_data))
                         elif state == State.RUNNING:

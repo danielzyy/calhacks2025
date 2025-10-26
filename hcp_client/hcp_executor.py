@@ -1,7 +1,15 @@
 from typing import Any, Dict, List, Tuple, Optional
 import socket
 import json
+import threading
+from dataclasses import dataclass, field
 
+@dataclass
+class Client:
+    conn: socket.socket
+    addr: tuple
+    thread: threading.Thread
+    alive: bool = field(default=True)
 
 class HCPExecutor:
     def __init__(self):
@@ -21,13 +29,14 @@ class HCPExecutor:
         self.devices: Dict[str, Dict[str, Any]] = {}
 
     # ---------- Registration ----------
-    def register_device(self, device_id: str, description: str, port: int):
+    def register_device(self, device_id: str, description: str, port: int, client: Client):
         """Register a hardware device reachable over TCP."""
         if device_id in self.devices:
             raise ValueError(f"Device '{device_id}' already registered.")
         self.devices[device_id] = {
             "description": description,
             "port": port,
+            "client": client,
             "actions": {}
         }
 
@@ -77,7 +86,6 @@ class HCPExecutor:
 
         return True
 
-    # ---------- Execution ----------
     def execute_action(self, device_id: str, action_name: str, payload: Dict[str, Any]) -> bool:
         """Validate and send action request over TCP."""
         if not self.validate_payload(device_id, action_name, payload):
@@ -91,10 +99,8 @@ class HCPExecutor:
         }
 
         try:
-            with socket.create_connection(("localhost", device["port"]), timeout=3) as sock:
-                sock.sendall(json.dumps(message).encode("utf-8"))
-                response = sock.recv(4096).decode("utf-8")
-                print(f"✅ Sent to {device_id}:{device['port']} → {response}")
+            device["client"].conn.sendall(json.dumps(message).encode("utf-8"))
+            print(f"✅ Sent to {device_id}:{device['port']}")
             return True
         except Exception as e:
             print(f"⚠️ TCP send failed for {device_id}:{device['port']} — {e}")
