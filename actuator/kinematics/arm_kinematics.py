@@ -36,14 +36,14 @@ def compute_inverse_kinematics_elbow_desired_pos(x, y, z):
 
     return np.array([joint_1, joint_2, joint_3])
 
-def compute_inverse_kinematics_at_desired_wrist_position(x, y, z, wrist_angle=0.0):
+def compute_inverse_kinematics_at_desired_wrist_position(x, y, z, wrist_approach_angle=0.0):
     """Compute inverse kinematics for a 3DOF arm with wrist angle consideration.
 
     Args:
         x (float): X coordinate of the end effector.
         y (float): Y coordinate of the end effector.
         z (float): Z coordinate of the end effector.
-        wrist_angle (float): Desired wrist angle in radians. The wrist angle is defined as the
+        wrist_approach_angle (float): Desired wrist angle in radians. The wrist angle is defined as the
         rotation between x0 and x_end_effector about z_end_effector.
 
     Description:
@@ -55,17 +55,17 @@ def compute_inverse_kinematics_at_desired_wrist_position(x, y, z, wrist_angle=0.
     # wrist position is desired to be located at the end effector. We need to backtrack L5 along the wrist angle
     # to find the elbow position
     joint_1 = np.arctan2(y, x) # base rotation angle, needed here
-    elbow_z = z - L5 * np.sin(wrist_angle)
-    elbow_r = L5 * np.cos(wrist_angle)
+    elbow_z = z - L5 * np.sin(wrist_approach_angle)
+    wrist_r = L5 * np.cos(wrist_approach_angle)
 
     # propagate back from end effector to elbow position
-    elbow_x = x - elbow_r * np.cos(joint_1)
-    elbow_y = y - elbow_r * np.sin(joint_1)
+    elbow_x = x - wrist_r * np.cos(joint_1)
+    elbow_y = y - wrist_r * np.sin(joint_1)
 
     elbow_joint_angles = compute_inverse_kinematics_elbow_desired_pos(elbow_x, elbow_y, elbow_z)
     # theta_2 + theta_3 + theta_4 = theta_5
-    # where theta_5 = wrist_angle - np.pi/2
-    joint_4 = wrist_angle - np.pi/2 - (elbow_joint_angles[1] + elbow_joint_angles[2])
+    # where theta_5 = wrist_approach_angle - np.pi/2
+    joint_4 = wrist_approach_angle - np.pi/2 - (elbow_joint_angles[1] + elbow_joint_angles[2])
     return np.array([elbow_joint_angles[0], elbow_joint_angles[1], elbow_joint_angles[2], joint_4])
 
 

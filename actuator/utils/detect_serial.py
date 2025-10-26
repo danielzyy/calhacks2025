@@ -18,7 +18,7 @@ def detect_so101_ports(
     follower_serial: str = FOLLOWER_SERIAL,
     vid: int | None = USB_VID,
     pid: int | None = USB_PID,
-    timeout_s: float = 6.0,
+    timeout_s: float = 1.0,
     poll_s: float = 0.25,
 ) -> dict:
     """
@@ -71,13 +71,10 @@ def detect_so101_ports(
 
         time.sleep(poll_s)
 
-    raise RuntimeError(
-        "Could not find both leader and follower ACM devices.\n"
-        f"  Expected leader serial:   {leader_serial}\n"
-        f"  Expected follower serial: {follower_serial}\n"
-        f"  Last seen ACM devices:    {last_seen_acm}\n"
-        f"  Last seen serial->port:   {last_seen_serials}"
-    )
+    return {
+        "leader_port": last_seen_serials.get(leader_serial, None),
+        "follower_port": last_seen_serials.get(follower_serial, None),
+    }
 
 
 # Example usage
