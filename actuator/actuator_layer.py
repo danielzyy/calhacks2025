@@ -29,7 +29,7 @@ class ActuatorLayerRequest:
     y_m: float
     z_m: float
     wrist_angle_rad: float # angle at which the wrist will approach a target end point
-    gripper_cmd: float # 0.0 to 1.0, where 0.0 is fully open and 1.0 is fully closed
+    gripper_cmd: float # 0.0 to 1.0, where 0.0 is fully closed and 1.0 is fully open
 
     def validate(self):
         assert self.gripper_cmd >= 0.0 and self.gripper_cmd <= 1.0, "Gripper command must be between 0.0 and 1.0"
