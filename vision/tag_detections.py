@@ -46,11 +46,12 @@ class Item:
 
 items = [Item("base", 0), Item("cup1", 1), Item("cup2", 2), Item("cup3", 3)]
 
-HEIGHT_OFFSET = 0.004
+HEIGHT_OFFSET = 0.04
 def getItemPositions():
     positions = []
     for i in items:
-        positions.append((i.xrel, i.yrel, HEIGHT_OFFSET))
+        positions.append({"Name": i.name, "Relative X Coordinate": i.xrel, "Relative Y Coordinate": i.yrel, "Height Offset": HEIGHT_OFFSET})
+    return positions
 
 def relative_pos(base, item):
     return ((item.x - base.x), (item.y - base.y))
@@ -156,13 +157,13 @@ def camera_setup():
         K_runtime = scale_K(camera_matrix, CALIB_IMAGE_SIZE, (W, H))
         print(f"Scaled K from {CALIB_IMAGE_SIZE} -> {(W, H)}")
 
-def camer_run():
+def camera_run():
     global cap
     global detector
 
     ok, frame = cap.read()
     if not ok:
-        return None
+        return
 
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
@@ -207,6 +208,5 @@ def camer_run():
     # Show video
     cv.imshow("Detection", frame)
     if cv.waitKey(1) & 0xFF == ord('q'):
-        return None
-    
-    return items
+        return
+
