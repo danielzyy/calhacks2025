@@ -63,7 +63,7 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.1)
+        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.5)
         self.request_fresh = True
 
         # misc
@@ -79,9 +79,9 @@ class ActuatorLayer:
         joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
-        print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
+        # print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
         self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
-        print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+        # print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
 
         if self.mode != Mode.AUTONOMOUS:
             teleop_joint_positions = self.teleop_device.get_action()
