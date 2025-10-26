@@ -78,6 +78,7 @@ class ActuatorLayer:
         # misc
         self.gripper_cmd_scale_y = [0.1027924, 1.7260]
         self.time_prev = time.time()
+        self.is_close_to_target = False
 
     def update_robot_state(self):
         if self.dry_run:
@@ -143,7 +144,7 @@ class ActuatorLayer:
             target_elbow_location[0],
             target_elbow_location[1],
             target_elbow_location[2],
-            wrist_angle=0.0 # full up is np.pi/2, full down is -np.pi/2
+            wrist_approach_angle=0.0 # full up is np.pi/2, full down is -np.pi/2
         )
 
         # if any ik solution is NaN, ignore the command
@@ -202,6 +203,14 @@ class ActuatorLayer:
         
         joint_cmd_dh[4] = wrist_angle
         joint_cmd_dh[5] = gripper_cmd  # gripper
+
+        # update if we're close to the target
+        self.is_close_to_target = is_close_to_target(
+            current_pos=self.end_effector_pos,
+            target_pos=request_pos,
+            threshold_m=0.01
+        )
+
         return joint_cmd_dh
 
 

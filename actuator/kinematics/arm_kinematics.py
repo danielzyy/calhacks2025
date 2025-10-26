@@ -93,6 +93,22 @@ def compute_end_effector_pos_from_joints(joint_angles):
     end_effector_pos = T_overall[:3, 3]
     return end_effector_pos
 
+def is_close_to_target(current_pos, target_pos, threshold_m=0.01):
+    """Check if the current position is within a threshold distance of the target position.
+
+    Args:
+        current_pos (np.array): Current position [x, y, z].
+        target_pos (np.array): Target position [x, y, z].
+        threshold_m (float): Distance threshold in meters.
+
+    Returns:
+        bool: True if within threshold, False otherwise.
+
+    """
+
+    distance = np.linalg.norm(target_pos - current_pos)
+    return distance <= threshold_m
+
 def get_instantenous_controller_target(current_pos, target_pos, linear_speed, dt):
     """Compute the next target position for the controller based on current position, target position, speed, and time step.
 
@@ -110,7 +126,7 @@ def get_instantenous_controller_target(current_pos, target_pos, linear_speed, dt
     direction_vector = target_pos - current_pos
     distance_to_target = np.linalg.norm(direction_vector)
 
-    if distance_to_target < 1e-6:
+    if is_close_to_target(current_pos, target_pos):
         return target_pos
 
     direction_unit_vector = direction_vector / distance_to_target
