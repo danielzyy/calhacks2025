@@ -63,12 +63,44 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.3, 0.0, 0.05, 0.0, 0.1)
-        self.request_fresh = False
+        self.request = ActuatorLayerRequest(0.152, 0.0, 0.054, 0.0, 0.1)
+        self.request_fresh = True
 
         # misc
         self.gripper_cmd_scale_y = [0.1027924, 1.7260]
 
+    def update_robot_state(self):
+        if self.dry_run:
+            if not hasattr(self, 'action'):
+                self.action = {f"{joint}.pos": 0.0 for joint in JOINT_NAMES_AS_INDEX}
+            joint_positions = self.action
+        else:
+            joint_positions = self.robot.get_observation()
+        joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
+        self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
+        self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
+        print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
+        self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
+        print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+
+        if self.mode != Mode.AUTONOMOUS:
+            teleop_joint_positions = self.teleop_device.get_action()
+            teleop_joint_angles = [teleop_joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
+            self.teleop_mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in teleop_joint_angles]
+            self.teleop_dh_joint_angles_actual_rad = mech_to_dh_angles(self.teleop_mech_joint_angles_actual_rad)
+            self.teleop_end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.teleop_dh_joint_angles_actual_rad))
+
+    def is_commanded_location_safe(self, x, y, z):
+        if get_euclidian_distance(
+            x, y
+        ) < L5:
+            click.secho(f"Warning: target position of {x}, {y}, {z} ignored as it is too close to the base", fg="yellow")
+            return False
+        elif x < 0.0:
+            click.secho(f"Warning: target position of {x}, {y}, {z} ignored as it is behind the base", fg="yellow")
+            return False
+        return True
+        
     def run_full_teleop(self):
         action = self.teleop_dh_joint_angles_actual_rad
         return action        
@@ -79,15 +111,13 @@ class ActuatorLayer:
             self.teleop_dh_joint_angles_actual_rad[:3]
         )
 
-        if get_euclidian_distance(
+        if not self.is_commanded_location_safe(
             leader_arm_elbow_location[0],
-            leader_arm_elbow_location[1]
-        ) < L5:
-            click.secho(f"Warning: target position of {leader_arm_elbow_location} ignored as it is too close to the base", fg="yellow")
+            leader_arm_elbow_location[1],
+            leader_arm_elbow_location[2]
+        ):
             return self.teleop_dh_joint_angles_actual_rad
-        elif leader_arm_elbow_location[0] < 0.0:
-            click.secho(f"Warning: target position of {leader_arm_elbow_location} ignored as it is behind the base", fg="yellow")
-            return self.teleop_dh_joint_angles_actual_rad
+        
         
         # solve for the required elbow joint angle to reach this position
         ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
@@ -111,26 +141,45 @@ class ActuatorLayer:
         joint_cmd_dh[5] = self.teleop_dh_joint_angles_actual_rad[5]  # gripper
 
         return joint_cmd_dh
+    
+    def run_autonomous(self):
+        if self.request_fresh:
+            # don't validate here... assume the user has done it
+            x = self.request.x_m
+            y = self.request.y_m
+            z = self.request.z_m
+            wrist_angle = self.request.wrist_angle_rad
+            gripper_cmd = np.interp(
+                self.request.gripper_cmd,
+                [0.0, 1.0],
+                self.gripper_cmd_scale_y
+            )
+            self.request_fresh = False
 
-    def update_robot_state(self):
-        if self.dry_run:
-            if not hasattr(self, 'action'):
-                self.action = {f"{joint}.pos": 0.0 for joint in JOINT_NAMES_AS_INDEX}
-            joint_positions = self.action
+            if not self.is_commanded_location_safe(x, y, z):
+                return self.dh_joint_angles_actual_rad
+            
+            wrist_approach_angle = 0.0 # flat approach
+
+            ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
+                x, y, z, wrist_approach_angle
+            )
+
+            if np.isnan(ik_solution).any():
+                click.secho(f"Warning: IK solution resulted in NaN for target position of {x}, {y}, {z}, ignoring command", fg="yellow")
+                return self.dh_joint_angles_actual_rad
+        
+            joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
+            for i in range(len(ik_solution)):
+                joint_cmd_dh[i] = ik_solution[i]
+            
+            joint_cmd_dh[4] = wrist_angle
+            joint_cmd_dh[5] = gripper_cmd  # gripper
+            return joint_cmd_dh
         else:
-            joint_positions = self.robot.get_observation()
-        joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
-        self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
-        self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
-        print(f"DH Joint Angles (rad): {self.dh_joint_angles_actual_rad}")
-        self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
-        # print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+            return None # Only issue if cmd is fresh
 
-        teleop_joint_positions = self.teleop_device.get_action()
-        teleop_joint_angles = [teleop_joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
-        self.teleop_mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in teleop_joint_angles]
-        self.teleop_dh_joint_angles_actual_rad = mech_to_dh_angles(self.teleop_mech_joint_angles_actual_rad)
-        self.teleop_end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.teleop_dh_joint_angles_actual_rad))
+
 
     def request_position(self, request: ActuatorLayerRequest):
         self.request = request
@@ -145,6 +194,8 @@ class ActuatorLayer:
             joint_angle_cmd = self.run_elbow_control_only_teleop()
         elif self.mode == Mode.AUTONOMOUS:
             joint_angle_cmd = self.run_autonomous()
+            if joint_angle_cmd is None:
+                joint_angle_cmd = self.joint_angle_cmd_prev
         else:
             raise NotImplementedError("Only FULL_TELEOP mode is implemented.")
         
@@ -156,6 +207,8 @@ class ActuatorLayer:
             pass
         else:
             self.robot.send_action(self.action)
+
+        self.joint_angle_cmd_prev = joint_angle_cmd
         
         if self.use_visualizer:
             self.visualizer_count += 1
