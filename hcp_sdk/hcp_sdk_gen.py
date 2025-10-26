@@ -3,7 +3,7 @@
 HCP SDK Generator
 -----------------
 Usage:
-    python hcp_sdk_gen.py --input robot_arm.json --output ./out
+    python hcp_sdk_gen.py --input examples/robot_arm.json --output ./out
 """
 
 import os
