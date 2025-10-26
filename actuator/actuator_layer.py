@@ -77,8 +77,8 @@ class ActuatorLayer:
         # => theta_4 = -pi/2 - theta_2 - theta_3
 
         joint_cmd_dh[3] = -np.pi/2 - (joint_cmd_dh[1] + joint_cmd_dh[2])
-        joint_cmd_dh[4] = 0.0  # neutral wrist roll
-        joint_cmd_dh[5] = 0.0
+        joint_cmd_dh[4] = self.teleop_dh_joint_angles_actual_rad[4]
+        joint_cmd_dh[5] = self.teleop_dh_joint_angles_actual_rad[5]  # gripper
 
         return joint_cmd_dh
 
