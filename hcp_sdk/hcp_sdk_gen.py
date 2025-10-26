@@ -59,12 +59,12 @@ def generate_device_code(data: Dict[str, Any]) -> str:
 
     for cmd_name, cmd_data in commands.items():
         desc = cmd_data["freetext_desc"]
-        params_doc = "\\n".join([f"      - {list(p.keys())[0]} ({list(p.values())[0]})" for p in cmd_data["params"]])
+        params_doc = "\n".join([f"        # - {list(p.keys())[0]} ({list(p.values())[0]})" for p in cmd_data["params"]])
 
         code_lines += [
             f"    elif action == '{cmd_name}':",
             f"        # {desc}",
-            f"        # Expected params:\\n{params_doc}",
+            f"        # Expected params:\n{params_doc}",
             f"        # TODO: implement logic below",
             f"        print('Executing {cmd_name} with', payload)",
             "        # USER CODE HERE",
