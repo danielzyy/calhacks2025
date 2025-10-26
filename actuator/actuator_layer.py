@@ -63,7 +63,7 @@ class ActuatorLayer:
         
         if self.use_visualizer:
             self.visualizer_count += 1
-            if self.visualizer_count % 10 == 0:
+            if self.visualizer_count % 1 == 0:
                 self.visualizer.plot(self.dh_joint_angles_actual_rad)
                 self.visualizer_count = 0 
 
