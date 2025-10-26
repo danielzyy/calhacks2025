@@ -4,6 +4,7 @@ from lerobot.robots.so101_follower import SO101FollowerConfig, SO101Follower
 from enum import Enum
 import click
 import argparse
+import time
 from dataclasses import dataclass
 
 # Add the parent directory to the Python path
@@ -72,8 +73,11 @@ class ActuatorLayer:
         self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.5)
         self.request_fresh = True
 
+        self.speed_limit_m_per_s = 0.75  # m/s
+
         # misc
         self.gripper_cmd_scale_y = [0.1027924, 1.7260]
+        self.time_prev = time.time()
 
     def update_robot_state(self):
         if self.dry_run:
@@ -96,6 +100,9 @@ class ActuatorLayer:
             self.teleop_dh_joint_angles_actual_rad = mech_to_dh_angles(self.teleop_mech_joint_angles_actual_rad)
             self.teleop_end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.teleop_dh_joint_angles_actual_rad))
 
+        self.dt_measured = time.time() - self.time_prev
+        self.time_prev = time.time()
+
     def is_commanded_location_safe(self, x, y, z):
         if get_euclidian_distance(
             x, y
@@ -117,19 +124,25 @@ class ActuatorLayer:
             self.teleop_dh_joint_angles_actual_rad[:3]
         )
 
+        target_elbow_location = get_instantenous_controller_target(
+            current_pos=self.end_effector_pos,
+            target_pos=leader_arm_elbow_location,
+            linear_speed=self.speed_limit_m_per_s,
+            dt=self.dt_measured
+        )
+
         if not self.is_commanded_location_safe(
-            leader_arm_elbow_location[0],
-            leader_arm_elbow_location[1],
-            leader_arm_elbow_location[2]
+            target_elbow_location[0],
+            target_elbow_location[1],
+            target_elbow_location[2]
         ):
             return self.teleop_dh_joint_angles_actual_rad
         
-        
         # solve for the required elbow joint angle to reach this position
         ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
-            leader_arm_elbow_location[0],
-            leader_arm_elbow_location[1],
-            leader_arm_elbow_location[2],
+            target_elbow_location[0],
+            target_elbow_location[1],
+            target_elbow_location[2],
             wrist_angle=0.0 # full up is np.pi/2, full down is -np.pi/2
         )
 

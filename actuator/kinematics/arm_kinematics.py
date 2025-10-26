@@ -93,6 +93,35 @@ def compute_end_effector_pos_from_joints(joint_angles):
     end_effector_pos = T_overall[:3, 3]
     return end_effector_pos
 
+def get_instantenous_controller_target(current_pos, target_pos, linear_speed, dt):
+    """Compute the next target position for the controller based on current position, target position, speed, and time step.
+
+    Args:
+        current_pos (np.array): Current position [x, y, z].
+        target_pos (np.array): Target position [x, y, z].
+        linear_speed (float): Linear speed in units per second.
+        dt (float): Time step in seconds.
+
+    Returns:
+        np.array: Next target position [x, y, z].
+
+    """
+
+    direction_vector = target_pos - current_pos
+    distance_to_target = np.linalg.norm(direction_vector)
+
+    if distance_to_target < 1e-6:
+        return target_pos
+
+    direction_unit_vector = direction_vector / distance_to_target
+    distance_step = linear_speed * dt
+
+    if distance_step >= distance_to_target:
+        return target_pos
+    else:
+        return current_pos + direction_unit_vector * distance_step
+
+
 if __name__ == "__main__":
     # Test conversion functions
     dh_angles = np.zeros(5)
