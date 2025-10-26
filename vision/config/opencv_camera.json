@@ -5,7 +5,7 @@
   },
   "available_commands": {
     "get_tags": {
-      "freetext_desc": "Returns the coordinates of every april tag in reference to the robot arm.",
+      "freetext_desc": "Returns the coordinates of every april tag in reference to the origin 0, 0, 0.",
       "params": []
     }
   }

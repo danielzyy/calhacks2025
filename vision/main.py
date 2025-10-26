@@ -10,21 +10,24 @@ client.start()
 tag_detections.camera_setup()
 
 while True:
+    tag_detections.camera_run()
     try:
-        tag_detections.camera_run()
         # Non-blocking check for new HCP commands
         action, payload = client.events.get_nowait()        
         print(f"[EVENT] {action}: {payload}")
 
         if (action == "get_tags"):
             # handle the command
-            result = {"status": "ok", "data": tag_detections.getItemPositions()}
+            # tag_detections.getItemPositions()
+            result = {"status": "ok", "result": tag_detections.getItemPositions()}
 
             # send the response back to HCP
+            print(result)
             client.send_response(action, result)
+            print("after send")
 
     except queue.Empty:
         pass
 
     # other main loop tasks
-    time.sleep(0.01)
+    time.sleep(0.1)

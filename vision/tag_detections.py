@@ -4,11 +4,13 @@ import numpy as np
 # ============================
 # USER SETTINGS (EDIT THESE)
 # ============================
-CAM_INDEX = 1                  # camera index
+CAM_INDEX = 0                 # camera index
 CENTER_TAG_ID = 0              # the "host/center" AprilTag id
 MARKER_LENGTH_M = 0.039        # tag edge length (meters), black square edge
 
-PIXEL_TO_M = 0.145/116
+# OFFSET_X = -135
+# OFFSET_Y = -10 # measured camera offset + claw offset
+PIXEL_TO_MM = 145/116
 # ---- Paste your calibration here (examples below are placeholders) ----
 camera_matrix = np.array([
     [685.46021183, 0.0, 944.39424736],
@@ -26,31 +28,34 @@ CALIB_IMAGE_SIZE = None  # e.g., (1280, 720) or None
 # ============================
 
 class Item:
-    def __init__(self, name , idx):
+    def __init__(self, name , idx, offsetx, offsety):
         self.name = name
         self.idx = idx
-        self.x = 0
-        self.y = 0
+        self.x = 0 # CAMERA FRAME
+        self.y = 0 # CAMERA FRAME
         self.size = 0
-        self.xrel = 0
-        self.yrel = 0
+        self.x_rel_arm = 0 # ARM FRAME
+        self.y_rel_arm = 0 # ARM FRAME
+        self.offsetx = offsetx
+        self.offsety = offsety
     
     def setPosition(self, x, y, size):
-        self.x = x
-        self.y = y
+        self.x = x + self.offsetx
+        self.y = y + self.offsety
         self.size = size
     
     def getRelPosition(self, base):
-        self.xrel = (self.x - base.x) * PIXEL_TO_M
-        self.yrel = (self.y - base.y) * PIXEL_TO_M
+        # Translate to arm frame
+        self.x_rel_arm = round(((-self.y) - (-base.y)) * PIXEL_TO_MM)
+        self.y_rel_arm = round((-self.x - (-base.x)) * PIXEL_TO_MM)
 
-items = [Item("base", 0), Item("cup1", 1), Item("cup2", 2), Item("cup3", 3)]
+items = [Item("base", 0, -135, -10), Item("pepsi_cup", 1, -25, 0), Item("cookies_cup", 2, -40, 0), Item("lettuce_cup", 3, -80, 0)]
 
-HEIGHT_OFFSET = 0.04
+HEIGHT_OFFSET = -50
 def getItemPositions():
     positions = []
     for i in items:
-        positions.append({"Name": i.name, "Relative X Coordinate": i.xrel, "Relative Y Coordinate": i.yrel, "Height Offset": HEIGHT_OFFSET})
+        positions.append({"Name": i.name, "Absolute X": i.x_rel_arm, "Absolute Y": i.y_rel_arm, "Absolute Z": HEIGHT_OFFSET})
     return positions
 
 def relative_pos(base, item):
@@ -160,6 +165,7 @@ def camera_setup():
 def camera_run():
     global cap
     global detector
+    show_viz = False
 
     ok, frame = cap.read()
     if not ok:
@@ -186,27 +192,36 @@ def camera_run():
                 np.linalg.norm(ptD - ptA)
             ]
             avg_size = np.mean(side_lengths)
+            tag_id = int(ids[i])
+
 
             # Draw marker outline and center
-            cv.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-            cv.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
-
-            # Draw tag ID
-            tag_id = int(ids[i])
-            cv.putText(frame, f"ID {tag_id}", (ptA[0], ptA[1] - 10),
-                        cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            if show_viz:
+                cv.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+                cv.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
+                # # Draw tag ID
+                cv.putText(frame, f"ID {tag_id}", (ptA[0], ptA[1] - 10),
+                            cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
             # Print info
-            for i in items:
-                if i.idx == tag_id:
-                    i.setPosition(cX, cY, avg_size)
-                    i.getRelPosition(items[0])
+            for item in items:
+                if item.idx == tag_id:
+                    # if tag_id == 0:
+                    #     cX += OFFSET_X
+                    #     cY += OFFSET_Y
+                    item.setPosition(cX, cY, avg_size)
+                    item.getRelPosition(items[0])
 
-    for i in items:
-        print(f"Item {i.name}, ID: {i.idx}, Center: ({i.x}, {i.y}), Size: {i.size}px, xrel: {i.xrel}, yrel: {i.yrel}")
+    # for i in items:
+    #     print(f"Item {i.name}, ID: {i.idx}, Center: ({i.x}, {i.y}), Size: {i.size}px, x_rel_arm: {i.x_rel_arm}, y_rel_arm: {i.y_rel_arm}")
+        # pass
+
+    # print(f"run")
 
     # Show video
-    cv.imshow("Detection", frame)
-    if cv.waitKey(1) & 0xFF == ord('q'):
-        return
+    if show_viz:
+        cv.imshow("Detection", frame)
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            return
 
+# 210 0.155

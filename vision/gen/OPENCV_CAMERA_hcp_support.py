@@ -7,7 +7,7 @@ import queue
 
 DEVICE_ID = 'OPENCV_CAMERA'
 DEVICE_DESC = """A camera that is parsed through opencv to return distance between an april tag and the arm."""
-HCP_HOST = "127.0.0.1"
+HCP_HOST = "172.20.10.4"
 HCP_PORT = 9000
 
 # Original JSON definition
@@ -15,7 +15,7 @@ HCP_DEVICE_JSON = { 'available_commands': { 'get_tags': { 'freetext_desc': 'Retu
                                                          'coordinates of every '
                                                          'april tag in '
                                                          'reference to the '
-                                                         'robot arm.',
+                                                         'origin 0, 0, 0.',
                                         'params': []}},
   'metadata': { 'device_id': 'OPENCV_CAMERA',
                 'freetext_desc': 'A camera that is parsed through opencv to '
