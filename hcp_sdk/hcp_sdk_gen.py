@@ -8,14 +8,15 @@ Usage:
 
 import os
 import json
-import socket
-import threading
-import time
+import argparse
+from typing import Dict, Any
+from pathlib import Path
 
-DEVICE_ID = 'ROBOT_ARM'
-DEVICE_DESC = """A robot arm that can pick and place objects."""
-HCP_HOST = "127.0.0.1"
-HCP_PORT = 9000
+# JSON Schema validation library
+try:
+    from jsonschema import validate, ValidationError
+except ImportError:
+    raise ImportError("Please install jsonschema: pip install jsonschema")
 
 
 # ---------------- JSON Schema Validation ----------------
