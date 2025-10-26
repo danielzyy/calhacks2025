@@ -11,6 +11,11 @@ import json
 from asi1client import ASI1Client, ASI1ClientError
 import re
 import argparse
+import requests
+import uuid
+
+UI_URL = "http://127.0.0.1:5000"  # UI base address (change if needed)
+USE_UI = False  # will be set by argparse
 
 # =========================
 # Voice support (optional)
@@ -21,8 +26,10 @@ mic = None
 try:
     parser = argparse.ArgumentParser()
     parser.add_argument("--voice", action="store_true", help="Use voice input instead of keyboard")
+    parser.add_argument("--ui", action="store_true", help="Enable UI updates to Flask dashboard")
     args = parser.parse_args()
     USE_VOICE = args.voice
+    USE_UI = args.ui
     if USE_VOICE:
         import speech_recognition as sr
         import keyboard
@@ -249,6 +256,18 @@ def start_server():
                     ready_for_user_input = True
                     return
                 with clients_lock:
+                    if USE_UI:
+                        req_id = str(uuid.uuid4())
+                        try:
+                            requests.post(f"{UI_URL}/api/log_request", json={
+                                "request_id": req_id,
+                                "target_hardware": action["target_hardware"],
+                                "toolname": action["toolname"],
+                                "command_body": action["command_body"]
+                            }, timeout=0.5)
+                        except Exception as e:
+                            print(f"[UI] Failed to log request: {e}")
+        
                     if (False == hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"])):
                         if retryCount < MAX_MALFORMED_MESSAGE_RETRY:
                             retryCount += 1
@@ -357,10 +376,32 @@ def start_server():
                             metadata = json_payload["metadata"]
                             available_commands = json_payload["available_commands"]
                             hcp.register_device(metadata["device_id"], metadata["freetext_desc"], evt.addr, clients.get(evt.addr))
+                            
+                            if USE_UI:
+                                try:
+                                    requests.post(f"{UI_URL}/api/register_device", json={
+                                        "device_id": metadata["device_id"],
+                                        "freetext_desc": metadata.get("freetext_desc", ""),
+                                        "addr": list(evt.addr),
+                                        "available_commands": available_commands
+                                    }, timeout=0.5)
+                                except Exception as e:
+                                    print(f"[UI] Device registration failed: {e}")
+                            
                             for command_name, command_data in available_commands.items():
                                 hcp.register_action(*convert_command(metadata["device_id"], command_name, command_data))
                         elif state == State.RUNNING:
                             messages.append({"role": "user", "content": "Response from device: " + str(evt.payload)})
+                            if USE_UI:
+                                try:
+                                    requests.post(f"{UI_URL}/api/log_response", json={
+                                        "request_id": str(uuid.uuid4()),
+                                        "target_hardware": str(evt.addr),
+                                        "status": "ok",
+                                        "payload": evt.payload.decode("utf-8", errors="ignore")
+                                    }, timeout=0.5)
+                                except Exception as e:
+                                    print(f"[UI] Failed to log device response: {e}")
 
                     elif evt.kind == 'disconnect':
                         print(f"[-] {evt.addr} disconnected")
