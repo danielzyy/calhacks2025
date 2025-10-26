@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "device_id": "ROBOT_ARM",
+    "freetext_desc": "A robot arm that can pick and place objects."
+  },
+  "available_commands": {
+    "move_arm": {
+      "freetext_desc": "Moves the arm to the specified 3D coordinates.",
+      "params": [
+        { "x": "int" },
+        { "y": "int" },
+        { "z": "int" }
+      ]
+    },
+    "control_grip": {
+      "freetext_desc": "Opens or closes the gripper.",
+      "params": [
+        { "closed": "bool" }
+      ]
+    },
+    "set_grip_angle": {
+      "freetext_desc": "Sets the angle of the gripper in degrees.",
+      "params": [
+        { "angle": "float" }
+      ]
+    }
+  }
+}
