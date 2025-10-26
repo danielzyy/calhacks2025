@@ -1,0 +1,111 @@
+from typing import Any, Dict, List, Tuple, Optional
+import socket
+import json
+
+
+class HCPExecutor:
+    def __init__(self):
+        # Structure:
+        # devices = {
+        #   "device_id": {
+        #       "description": str,
+        #       "port": int,
+        #       "actions": {
+        #           "action_name": {
+        #               "description": str,
+        #               "params": [(name, type), ...],
+        #           }
+        #       }
+        #   }
+        # }
+        self.devices: Dict[str, Dict[str, Any]] = {}
+
+    # ---------- Registration ----------
+    def register_device(self, device_id: str, description: str, port: int):
+        """Register a hardware device reachable over TCP."""
+        if device_id in self.devices:
+            raise ValueError(f"Device '{device_id}' already registered.")
+        self.devices[device_id] = {
+            "description": description,
+            "port": port,
+            "actions": {}
+        }
+
+    def register_action(
+        self,
+        device_id: str,
+        action_name: str,
+        description: str,
+        params: List[Tuple[str, type]],
+    ):
+        """Register an action for a device."""
+        if device_id not in self.devices:
+            raise ValueError(f"Device '{device_id}' not found.")
+        device = self.devices[device_id]
+        if action_name in device["actions"]:
+            raise ValueError(f"Action '{action_name}' already registered for '{device_id}'.")
+        device["actions"][action_name] = {
+            "description": description,
+            "params": params
+        }
+
+    # ---------- Validation ----------
+    def validate_payload(self, device_id: str, action_name: str, payload: Dict[str, Any]) -> bool:
+        """Ensure payload matches expected parameter schema."""
+        device = self.devices.get(device_id)
+        if not device:
+            print(f"❌ Unknown device '{device_id}'")
+            return False
+        action = device["actions"].get(action_name)
+        if not action:
+            print(f"❌ Unknown action '{action_name}' for '{device_id}'")
+            return False
+
+        for param_name, param_type in action["params"]:
+            if param_name not in payload:
+                print(f"❌ Missing parameter '{param_name}'")
+                return False
+            if not isinstance(payload[param_name], param_type):
+                print(f"❌ Parameter '{param_name}' should be {param_type.__name__}, got {type(payload[param_name]).__name__}")
+                return False
+
+        # Check for unexpected params
+        for key in payload:
+            if key not in [p[0] for p in action["params"]]:
+                print(f"⚠️ Unexpected parameter '{key}'")
+                return False
+
+        return True
+
+    # ---------- Execution ----------
+    def execute_action(self, device_id: str, action_name: str, payload: Dict[str, Any]) -> bool:
+        """Validate and send action request over TCP."""
+        if not self.validate_payload(device_id, action_name, payload):
+            return False
+
+        device = self.devices[device_id]
+
+        message = {
+            "action": action_name,
+            "payload": payload
+        }
+
+        try:
+            with socket.create_connection(("localhost", device["port"]), timeout=3) as sock:
+                sock.sendall(json.dumps(message).encode("utf-8"))
+                response = sock.recv(4096).decode("utf-8")
+                print(f"✅ Sent to {device_id}:{device['port']} → {response}")
+            return True
+        except Exception as e:
+            print(f"⚠️ TCP send failed for {device_id}:{device['port']} — {e}")
+            return False
+
+    # ---------- Query helpers ----------
+    def list_devices(self) -> Dict[str, Dict[str, Any]]:
+        return {n: {"desc": d["description"], "port": d["port"]} for n, d in self.devices.items()}
+
+    def list_actions(self, device_id: str) -> Dict[str, Dict[str, Any]]:
+        if device_id not in self.devices:
+            raise ValueError(f"Device '{device_id}' not found.")
+        actions = self.devices[device_id]["actions"]
+        return {a: {"desc": d["description"]} for a, d in actions.items()}
