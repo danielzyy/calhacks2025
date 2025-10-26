@@ -20,9 +20,6 @@ except ASI1ClientError as e:
 
 messages = []
 
-ready_for_user_input = False
-retryCount = 0
-
 HOST = '127.0.0.1'
 PORT = 9000
 
@@ -130,11 +127,14 @@ def handle_client(conn: socket.socket, addr: tuple, event_q: queue.Queue):
             pass
 
 def start_server():
+    ready_for_user_input = False
+    retryCount = 0
     event_q: queue.Queue[ClientEvent] = queue.Queue()
     clients: dict[tuple, Client] = {}
     clients_lock = threading.Lock()
 
     def running_tick() -> None:
+        nonlocal ready_for_user_input, retryCount
         """
         Called repeatedly during RUNNING (very frequently).
         Use send_to/broadcast/list_clients from here to drive real-time behavior.
@@ -236,15 +236,15 @@ def start_server():
                 # --- state transitions ---
                 if state == State.STARTUP:
                     # Immediately go to CONNECTING and start 5s window
-                    connecting_deadline = now + 10.0
-                    print("[state] STARTUP -> CONNECTING (10s window)")
+                    connecting_deadline = now + 3.0
+                    print("[state] STARTUP -> CONNECTING (3s window)")
                     state = State.CONNECTING
 
                 elif state == State.CONNECTING and now >= connecting_deadline:
                     print("[state] CONNECTING -> RUNNING")
                     state = State.RUNNING
                     messages.append(
-                        {"role": "system", "content": "You are controlling these following pieces of hardware with the following actions:\n\n" + hcp.get_device_llm_context_str() + "\n\nI will give you commands and you can call any of these tools to fulfill them. If you need more info ask me. Whenever you want to call a tool you should put a ----- at the start and end of the call. the call should be a properly formatted json with a \"target_hardware\", \"toolname\" and \"command_body\" entry where command body is a nested json. If you want to make multiple commands in a row make them one by one and wait for a status response back from the hardware!"}
+                        {"role": "system", "content": "You are controlling these following pieces of hardware with the following actions:\n\n" + hcp.get_all_devices_llm_context_str() + "\n\nI will give you commands and you can call any of these tools to fulfill them. If you need more info ask me. Whenever you want to call a tool you should put a ----- at the start and end of the call. the call should be a properly formatted json with a \"target_hardware\", \"toolname\" and \"command_body\" entry where command body is a nested json. If you want to make multiple commands in a row make them one by one and wait for a status response back from the hardware!"}
                     )
                     ready_for_user_input = True
 
@@ -264,7 +264,7 @@ def start_server():
                             msg_json = """
                             {
                                 "action": "REQUEST_HCP_DATA",
-                                "payload": \{\}
+                                "payload": {}
                             }
                             """
                             msg = msg_json.encode()
@@ -278,9 +278,9 @@ def start_server():
                             available_commands = json_payload["available_commands"]
                             hcp.register_device(metadata["device_id"], metadata["freetext_desc"], evt.addr, clients.get(evt.addr))
                             for command_name, command_data in available_commands.items():
-                                hcp.register_action(convert_command(metadata["device_id"], command_name, command_data))
+                                hcp.register_action(*convert_command(metadata["device_id"], command_name, command_data))
                         elif state == State.RUNNING:
-                            messages.append("Response from device: " + str(evt.payload))
+                            messages.append({"role": "user", "content": "Response from device: " + str(evt.payload)})
 
                     elif evt.kind == 'disconnect':
                         print(f"[-] {evt.addr} disconnected")
@@ -301,7 +301,7 @@ def start_server():
                 # --- per-state behavior ---
                 if state == State.RUNNING:
                     # Give you a frequent, lightweight hook to drive logic
-                    running_tick(send_to, broadcast, list_clients)
+                    running_tick()
 
         except KeyboardInterrupt:
             print("\nShutting down...")
