@@ -44,6 +44,42 @@ def extract_dashed_section(text):
         return inside, outside, True
     else:
         return None, text.strip(), False
+    
+def extract_main_json_with_context(text):
+    """
+    Extract the first JSON object (dict) from a string.
+    Returns a tuple: (parsed_json or None, text_outside_json, json_exists_bool)
+    """
+    brace_count = 0
+    current_json = ""
+    in_json = False
+    outside_text = ""
+    json_found = False
+
+    for char in text:
+        if char == '{':
+            if not in_json:
+                in_json = True
+                current_json = ""
+            brace_count += 1
+        if in_json:
+            current_json += char
+        else:
+            outside_text += char
+        if char == '}':
+            if in_json:
+                brace_count -= 1
+                if brace_count == 0:
+                    # Attempt to parse JSON
+                    try:
+                        parsed_json = json.loads(current_json)
+                        json_found = True
+                        return parsed_json, outside_text, True
+                    except json.JSONDecodeError:
+                        return None, text, False  # Invalid JSON
+
+    # No JSON found
+    return None, text, False
 
 def bytes_to_json(byte_string):
     """
@@ -162,12 +198,11 @@ def start_server():
                 response = client.chat_completion(messages)
                 ai_reply = response["choices"][0]["message"]["content"].strip()
                 messages.append({"role": "assistant", "content": ai_reply})
-                inside, outside, isCommand = extract_dashed_section(ai_reply)
+                action, outside, isCommand = extract_main_json_with_context(ai_reply)
                 print(f"AI: {outside}\n")
                 if not isCommand:
                     ready_for_user_input = True
                     return
-                action = json.loads(inside)
                 with clients_lock:
                     if (False == hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"])):
                         if retryCount < MAX_MALFORMED_MESSAGE_RETRY:
