@@ -6,6 +6,7 @@ JOINT_NAMES_AS_INDEX = [
     "elbow_flex",
     "wrist_flex",
     "wrist_roll",
+    "gripper",
 ]
 
 L1 = 0.0304

@@ -21,7 +21,7 @@ class Mode(Enum):
     AUTONOMOUS = "AUTONOMOUS"
     
 class ActuatorLayer:
-    def __init__(self, mode, use_visualizer=False):
+    def __init__(self, mode, dry_run=False, use_visualizer=False):
         assert mode in Mode, "Invalid mode specified."
         self.mode = mode
 
@@ -48,8 +48,9 @@ class ActuatorLayer:
             self.visualizer_count = 0
 
     def run_full_teleop(self):
-        action = self.teleop_device.get_action()
-        self.robot.send_action(action)
+        action = self.teleop_dh_joint_angles_actual_rad
+        return action
+        
 
     def run_elbow_control_only_teleop(self):
         
@@ -97,11 +98,16 @@ class ActuatorLayer:
         self.update_robot_state()
 
         if self.mode == Mode.FULL_TELEOP:
-            self.run_full_teleop()
+            joint_angle_cmd = self.run_full_teleop()
         elif self.mode == Mode.ELBOW_CONTROL_ONLY_TELEOP:
-            self.run_elbow_control_only_teleop()
+            joint_angle_cmd = self.run_elbow_control_only_teleop()
         else:
             raise NotImplementedError("Only FULL_TELEOP mode is implemented.")
+        
+        joint_angle_cmd_mech = dh_to_mech_angles(joint_angle_cmd)
+        assert len(joint_angle_cmd_mech) == JOINT_NAMES_AS_INDEX.__len__(), "Joint command length mismatch."
+        action = {f"{JOINT_NAMES_AS_INDEX[i]}.pos": np.rad2deg(joint_angle_cmd_mech[i]) for i in range(len(joint_angle_cmd_mech))}
+        self.robot.send_action(action)
         
         if self.use_visualizer:
             self.visualizer_count += 1

@@ -32,6 +32,7 @@ while True:
     action = teleop_device.get_action()
     robot.send_action(action)
     robot_pos = robot.get_observation()
+    print(robot_pos)
     joint_angles = [robot_pos[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
     joint_angles_rad = [np.deg2rad(angle) for angle in joint_angles]
     joint_angles_dh = mech_to_dh_angles(joint_angles_rad)

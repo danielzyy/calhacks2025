@@ -15,6 +15,7 @@ ROBOT_DH_TABLES = [
         [0, 0.0, L4, 0.0],
         [0, 0.0, 0.0, -np.pi / 2],
         [0, L5, 0.0, 0.0],  # to increase length and include also gripper: [0, 0.155, 0.0, 0.0],
+        [0, 0.0, 0.0, 0.0],  # gripper
 ]
 
 def dh_to_mech_angles(q_dh):
@@ -25,6 +26,7 @@ def dh_to_mech_angles(q_dh):
     q_mech[2] = -q_dh[2] + beta - np.pi/2
     q_mech[3] = -q_dh[3] - np.pi/2
     q_mech[4] =  q_dh[4]
+    q_mech[5] = q_dh[5]  # gripper
 
     return q_mech
 
@@ -34,7 +36,8 @@ def mech_to_dh_angles(q_mech):
     joint_3 = q_mech[2] * -1.0 + beta - np.pi/2
     joint_4 = q_mech[3] * -1.0 - np.pi/2
     joint_5 = q_mech[4]
-    return np.array([joint_1, joint_2, joint_3, joint_4, joint_5])
+    joint_6 = q_mech[5]  # gripper
+    return np.array([joint_1, joint_2, joint_3, joint_4, joint_5, joint_6])
 
 def dh_transform_matrix(theta, d, a, alpha):
     """Compute the Denavit-Hartenberg transformation matrix.
