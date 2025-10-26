@@ -73,7 +73,7 @@ class ActuatorLayer:
         self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.5)
         self.request_fresh = True
 
-        self.speed_limit_m_per_s = 0.75  # m/s
+        self.speed_limit_m_per_s = 0.6  # m/s
 
         # misc
         self.gripper_cmd_scale_y = [0.1027924, 1.7260]
@@ -163,40 +163,46 @@ class ActuatorLayer:
     
     def run_autonomous(self):
         if self.request_fresh:
-            # don't validate here... assume the user has done it
-            x = self.request.x_m
-            y = self.request.y_m
-            z = self.request.z_m
-            wrist_angle = self.request.wrist_angle_rad
-            gripper_cmd = np.interp(
-                self.request.gripper_cmd,
-                [0.0, 1.0],
-                self.gripper_cmd_scale_y
-            )
             self.request_fresh = False
+        # don't validate here... assume the user has done it
+        request_pos = np.array([self.request.x_m, self.request.y_m, self.request.z_m])
+        target_end_effector_location = get_instantenous_controller_target(
+            current_pos=self.end_effector_pos,
+            target_pos=request_pos,
+            linear_speed=self.speed_limit_m_per_s,
+            dt=self.dt_measured
+        )
+        x = target_end_effector_location[0]
+        y = target_end_effector_location[1]
+        z = target_end_effector_location[2]
+        wrist_angle = self.request.wrist_angle_rad
+        gripper_cmd = np.interp(
+            self.request.gripper_cmd,
+            [0.0, 1.0],
+            self.gripper_cmd_scale_y
+        )
+        self.request_fresh = False
 
-            if not self.is_commanded_location_safe(x, y, z):
-                return self.dh_joint_angles_actual_rad
-            
-            wrist_approach_angle = 0.0 # flat approach
-
-            ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
-                x, y, z, wrist_approach_angle
-            )
-
-            if np.isnan(ik_solution).any():
-                click.secho(f"Warning: IK solution resulted in NaN for target position of {x}, {y}, {z}, ignoring command", fg="yellow")
-                return self.dh_joint_angles_actual_rad
+        if not self.is_commanded_location_safe(x, y, z):
+            return self.dh_joint_angles_actual_rad
         
-            joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
-            for i in range(len(ik_solution)):
-                joint_cmd_dh[i] = ik_solution[i]
-            
-            joint_cmd_dh[4] = wrist_angle
-            joint_cmd_dh[5] = gripper_cmd  # gripper
-            return joint_cmd_dh
-        else:
-            return None # Only issue if cmd is fresh
+        wrist_approach_angle = 0.0 # flat approach
+
+        ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
+            x, y, z, wrist_approach_angle
+        )
+
+        if np.isnan(ik_solution).any():
+            click.secho(f"Warning: IK solution resulted in NaN for target position of {x}, {y}, {z}, ignoring command", fg="yellow")
+            return self.dh_joint_angles_actual_rad
+    
+        joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
+        for i in range(len(ik_solution)):
+            joint_cmd_dh[i] = ik_solution[i]
+        
+        joint_cmd_dh[4] = wrist_angle
+        joint_cmd_dh[5] = gripper_cmd  # gripper
+        return joint_cmd_dh
 
 
 
