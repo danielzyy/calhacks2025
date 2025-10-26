@@ -10,6 +10,48 @@ from hcp_executor import Client
 import json
 from asi1client import ASI1Client, ASI1ClientError
 import re
+import argparse
+
+# =========================
+# Voice support (optional)
+# =========================
+USE_VOICE = False
+recognizer = None
+mic = None
+try:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--voice", action="store_true", help="Use voice input instead of keyboard")
+    args = parser.parse_args()
+    USE_VOICE = args.voice
+    if USE_VOICE:
+        import speech_recognition as sr
+        import keyboard
+        recognizer = sr.Recognizer()
+        mic = sr.Microphone()
+except Exception as e:
+    print(f"[!] Voice support disabled: {e}")
+    
+def listen_to_speech() -> str:
+    if not USE_VOICE or not recognizer or not mic:
+        return ""
+    print("\n🎙️ Hold SPACE to talk... (release when done)")
+    keyboard.wait("space")
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source, duration=0.3)
+        print("🎧 Listening... (release space when finished)")
+        audio = recognizer.listen(source)
+    while keyboard.is_pressed("space"):
+        time.sleep(0.05)
+    print("🧠 Processing speech...")
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"You said: {text}")
+        return text
+    except sr.UnknownValueError:
+        print("❌ Could not understand audio.")
+    except sr.RequestError:
+        print("⚠️ Speech recognition service unavailable.")
+    return ""
 
 hcp = hcp_executor.HCPExecutor()
 
@@ -178,7 +220,10 @@ def start_server():
         """
         if ready_for_user_input:
             try:
-                user_input = input("You: ").strip()
+                if USE_VOICE:
+                    user_input = listen_to_speech()
+                else:
+                    user_input = input("You: ").strip()
             except (KeyboardInterrupt, EOFError):
                 print("\nExiting...")
                 exit(0)
