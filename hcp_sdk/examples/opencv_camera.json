@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "device_id": "OPENCV_CAMERA",
+    "freetext_desc": "A camera that is parsed through opencv to return distance between an april tag and the arm."
+  },
+  "available_commands": {
+    "get_tags": {
+      "freetext_desc": "Returns the coordinates of every april tag in reference to the robot arm.",
+      "params": []
+    }
+  }
+}
