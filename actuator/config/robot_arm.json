@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "device_id": "SOARM100_ROBOT_ARM",
+    "freetext_desc": "A robot arm capable of moving in 3D space and controlling a gripper."
+  },
+  "available_commands": {
+    "move_arm": {
+      "freetext_desc": "Moves the arm to the specified 3D coordinates, each given in mm.",
+      "params": [
+        { "x": "int" },
+        { "y": "int" },
+        { "z": "int" }
+      ]
+    },
+    "control_grip": {
+      "freetext_desc": "Opens or closes the gripper.",
+      "params": [
+        { "closed": "bool" }
+      ]
+    },
+    "set_wrist_angle": {
+      "freetext_desc": "Sets the wrist angle of the gripper in degrees. 0deg is flat, 90deg is vertical.",
+      "params": [
+        { "angle": "float" }
+      ]
+    }
+  }
+}
