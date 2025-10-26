@@ -66,14 +66,22 @@ class ActuatorLayer:
         ) < L5:
             click.secho(f"Warning: target position of {leader_arm_elbow_location} ignored as it is too close to the base", fg="yellow")
             return self.teleop_dh_joint_angles_actual_rad
+        elif leader_arm_elbow_location[0] < 0.0:
+            click.secho(f"Warning: target position of {leader_arm_elbow_location} ignored as it is behind the base", fg="yellow")
+            return self.teleop_dh_joint_angles_actual_rad
         
         # solve for the required elbow joint angle to reach this position
         ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
             leader_arm_elbow_location[0],
             leader_arm_elbow_location[1],
             leader_arm_elbow_location[2],
-            wrist_angle=0.0
+            wrist_angle=0.0 # full up is np.pi/2, full down is -np.pi/2
         )
+
+        # if any ik solution is NaN, ignore the command
+        if np.isnan(ik_solution).any():
+            click.secho(f"Warning: IK solution resulted in NaN for target position of {leader_arm_elbow_location}, ignoring command", fg="yellow")
+            return self.teleop_dh_joint_angles_actual_rad
 
         # send only the elbow joint command to the follower arm
         joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
