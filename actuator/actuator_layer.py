@@ -52,7 +52,7 @@ class ActuatorLayer:
 
             robot_config = SO101FollowerConfig(
                 port=ports["follower_port"],
-                id="follower_arm5",
+                id="follower_arm6",
             )
             self.robot = SO101Follower(robot_config)
             self.robot.connect()
