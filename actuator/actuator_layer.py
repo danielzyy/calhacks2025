@@ -17,7 +17,7 @@ from actuator.kinematics.constants import *
 
 class Mode(Enum):
     FULL_TELEOP = "FULL_TELEOP"
-    TELEOP_ONLY_JOINT_3_POS = "TELEOP_ONLY_JOINT_3_POS"
+    ELBOW_CONTROL_ONLY_TELEOP = "ELBOW_CONTROL_ONLY_TELEOP"
     AUTONOMOUS = "AUTONOMOUS"
     
 class ActuatorLayer:
@@ -51,15 +51,57 @@ class ActuatorLayer:
         action = self.teleop_device.get_action()
         self.robot.send_action(action)
 
-    def step(self):
-        if self.mode == Mode.FULL_TELEOP:
-            self.run_full_teleop()
-        else:
-            raise NotImplementedError("Only FULL_TELEOP mode is implemented.")
+    def run_elbow_control_only_teleop(self):
+        
+        leader_arm_location = self.teleop_end_effector_pos
+        # solve for the required elbow joint angle to reach this position
+        ik_solution = compute_inverse_kinematics_wrist_desired_pos(
+            leader_arm_location[0],
+            leader_arm_location[1],
+            leader_arm_location[2],
+        )
+        # send only the elbow joint command to the follower arm
+        joint_cmd_dh = np.zeros(5)
+        for i in range(3):
+            joint_cmd_dh[i] = ik_solution[i]
+
+        # theta_2 + theta_3 + theta_4 = theta_5
+        # constrain theta_5 to be -pi/2 to keep wrist flat
+        # therefore, set -pi/2 = theta_2 + theta_3 + theta_4
+        # => theta_4 = -pi/2 - theta_2 - theta_3
+
+        joint_cmd_dh[3] = -np.pi/2 - (joint_cmd_dh[1] + joint_cmd_dh[2])
+        joint_cmd_dh[4] = 0.0  # neutral wrist roll
+
+        joint_cmd_mech = dh_to_mech_angles(joint_cmd_dh)
+        assert len(joint_cmd_mech) == JOINT_NAMES_AS_INDEX.__len__(), "Joint command length mismatch."
+        action = {f"{JOINT_NAMES_AS_INDEX[i]}.pos": np.rad2deg(joint_cmd_mech[i]) for i in range(len(joint_cmd_mech))}
+
+        self.robot.send_action(action)
+
+    def update_robot_state(self):
         joint_positions = self.robot.get_observation()
         joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
+        self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
+        print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+
+        teleop_joint_positions = self.teleop_device.get_action()
+        teleop_joint_angles = [teleop_joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
+        self.teleop_mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in teleop_joint_angles]
+        self.teleop_dh_joint_angles_actual_rad = mech_to_dh_angles(self.teleop_mech_joint_angles_actual_rad)
+        self.teleop_end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.teleop_dh_joint_angles_actual_rad))
+
+    def step(self):
+        self.update_robot_state()
+
+        if self.mode == Mode.FULL_TELEOP:
+            self.run_full_teleop()
+        elif self.mode == Mode.ELBOW_CONTROL_ONLY_TELEOP:
+            self.run_elbow_control_only_teleop()
+        else:
+            raise NotImplementedError("Only FULL_TELEOP mode is implemented.")
         
         if self.use_visualizer:
             self.visualizer_count += 1

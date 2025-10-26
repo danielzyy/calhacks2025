@@ -35,6 +35,8 @@ while True:
     joint_angles = [robot_pos[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
     joint_angles_rad = [np.deg2rad(angle) for angle in joint_angles]
     joint_angles_dh = mech_to_dh_angles(joint_angles_rad)
+    for i in range(len(joint_angles_dh)):
+        print(f"Joint {i+1} Angle (DH): {np.rad2deg(joint_angles_dh[i]):.2f} degrees")
     end_effector_pos = compute_end_effector_pos_from_joints(np.array(joint_angles_dh))
     print(f"End Effector Position: x={end_effector_pos[0]:.3f}, y={end_effector_pos[1]:.3f}, z={end_effector_pos[2]:.3f}")
 
