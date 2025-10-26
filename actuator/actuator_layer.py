@@ -36,27 +36,33 @@ class ActuatorLayerRequest:
         assert self.x >= 0.0, "X coordinate must be non-negative"
     
 class ActuatorLayer:
-    def __init__(self, mode, dry_run=False, use_visualizer=False):
+    def __init__(self, mode, virtual: False, dry_run=False, use_visualizer=False):
         assert mode in Mode, "Invalid mode specified."
+        if virtual:
+            assert dry_run, "Virtual mode requires dry_run to be True."
+            assert mode == Mode.AUTONOMOUS, "Virtual mode only supports AUTONOMOUS mode."
+
         self.mode = mode
         self.dry_run = dry_run
+        self.virtual = virtual
 
-        ports = detect_so101_ports()
+        if not virtual:
+            ports = detect_so101_ports()
 
-        robot_config = SO101FollowerConfig(
-            port=ports["follower_port"],
-            id="follower_arm5",
-        )
-        self.robot = SO101Follower(robot_config)
-        self.robot.connect()
-
-        if mode != Mode.AUTONOMOUS:
-            teleop_config = SO101LeaderConfig(
-                port=ports["leader_port"],
-                id="leader_arm4",
+            robot_config = SO101FollowerConfig(
+                port=ports["follower_port"],
+                id="follower_arm5",
             )
-            self.teleop_device = SO101Leader(teleop_config)
-            self.teleop_device.connect()
+            self.robot = SO101Follower(robot_config)
+            self.robot.connect()
+
+            if mode != Mode.AUTONOMOUS:
+                teleop_config = SO101LeaderConfig(
+                    port=ports["leader_port"],
+                    id="leader_arm4",
+                )
+                self.teleop_device = SO101Leader(teleop_config)
+                self.teleop_device.connect()
 
         self.use_visualizer = use_visualizer
         if use_visualizer:
@@ -230,10 +236,16 @@ if __name__ == "__main__":
         action="store_true",
         help="If set, runs in dry run mode without sending commands to the robot."
     )
+    parser.add_argument(
+        "--virtual",
+        action="store_true",
+        help="If set, runs in virtual mode without connecting to real hardware. Implies dry run"
+    )
     args = parser.parse_args()
 
     mode = Mode(args.mode)
-    actuator_layer = ActuatorLayer(mode, use_visualizer=True, dry_run=args.dry_run)
+
+    actuator_layer = ActuatorLayer(mode, use_visualizer=True, dry_run=args.dry_run, virtual=args.virtual)
 
     while True:
         actuator_layer.step()
