@@ -1,7 +1,7 @@
 {
   "metadata": {
     "device_id": "SOARM100_ROBOT_ARM",
-    "freetext_desc": "A robot arm capable of moving in 3D space and controlling a gripper."
+    "freetext_desc": "A robot arm capable of moving in 3D space and controlling a gripper.  The arm can move to specified (x, y, z) coordinates in mm, open and close its gripper, and set the wrist angle of the gripper. The robot starts at (100, 0, 150). The coordinate frame is aligned such that +X is forward, +Z is up, +Y is to the left when facing forward. The gripper is closed on init, with the wrist angle at 90 degrees."
   },
   "available_commands": {
     "move_arm": {

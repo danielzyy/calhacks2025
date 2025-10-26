@@ -70,10 +70,10 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, np.deg2rad(90.0), 0.5)
+        self.request = ActuatorLayerRequest(0.1, 0.0, 0.15, np.deg2rad(90.0), 0.1)
         self.request_fresh = True
 
-        self.speed_limit_m_per_s = 0.6  # m/s
+        self.speed_limit_m_per_s = 0.4  # m/s
 
         # misc
         self.gripper_cmd_scale_y = [0.1027924, 1.7260]
@@ -147,7 +147,7 @@ class ActuatorLayer:
             target_elbow_location[0],
             target_elbow_location[1],
             target_elbow_location[2],
-            wrist_approach_angle=0.0 # full up is np.pi/2, full down is -np.pi/2
+            wrist_approach_angle=-np.pi/4 # full up is np.pi/2, full down is -np.pi/2
         )
 
         # if any ik solution is NaN, ignore the command
@@ -190,7 +190,7 @@ class ActuatorLayer:
         if not self.is_commanded_location_safe(x, y, z):
             return self.dh_joint_angles_actual_rad
         
-        wrist_approach_angle = 0.0 # flat approach
+        wrist_approach_angle = -np.pi/4 # flat approach
 
         ik_solution = compute_inverse_kinematics_at_desired_wrist_position(
             x, y, z, wrist_approach_angle
