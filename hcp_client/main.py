@@ -244,7 +244,7 @@ def start_server():
                     print("[state] CONNECTING -> RUNNING")
                     state = State.RUNNING
                     messages.append(
-                        {"role": "system", "content": "You are controlling these following pieces of hardware with the following actions:" + "I will give you commands and you can call any of these tools to fulfill them. If you need more info ask me. Whenever you want to call a tool you should put a ----- at the start and end of the call. the call should be a properly formatted json with a \"target_hardware\", \"toolname\" and \"command_body\" entry where command body is a nested json"}
+                        {"role": "system", "content": "You are controlling these following pieces of hardware with the following actions:\n\n" + hcp.get_device_llm_context_str() + "\n\nI will give you commands and you can call any of these tools to fulfill them. If you need more info ask me. Whenever you want to call a tool you should put a ----- at the start and end of the call. the call should be a properly formatted json with a \"target_hardware\", \"toolname\" and \"command_body\" entry where command body is a nested json. If you want to make multiple commands in a row make them one by one and wait for a status response back from the hardware!"}
                     )
                     ready_for_user_input = True
 
