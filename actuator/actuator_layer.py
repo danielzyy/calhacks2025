@@ -55,12 +55,14 @@ class ActuatorLayer:
 
     def run_elbow_control_only_teleop(self):
         
-        leader_arm_location = self.teleop_end_effector_pos
+        leader_arm_elbow_location =compute_end_effector_pos_from_joints(
+            self.teleop_dh_joint_angles_actual_rad[:3]
+        )
         # solve for the required elbow joint angle to reach this position
         ik_solution = compute_inverse_kinematics_wrist_desired_pos(
-            leader_arm_location[0],
-            leader_arm_location[1],
-            leader_arm_location[2],
+            leader_arm_elbow_location[0],
+            leader_arm_elbow_location[1],
+            leader_arm_elbow_location[2],
         )
         # send only the elbow joint command to the follower arm
         joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
@@ -76,12 +78,7 @@ class ActuatorLayer:
         joint_cmd_dh[4] = 0.0  # neutral wrist roll
         joint_cmd_dh[5] = 0.0
 
-
-        joint_cmd_mech = dh_to_mech_angles(joint_cmd_dh)
-        assert len(joint_cmd_mech) == JOINT_NAMES_AS_INDEX.__len__(), "Joint command length mismatch."
-        action = {f"{JOINT_NAMES_AS_INDEX[i]}.pos": np.rad2deg(joint_cmd_mech[i]) for i in range(len(joint_cmd_mech))}
-
-        self.robot.send_action(action)
+        return joint_cmd_dh
 
     def update_robot_state(self):
         if self.dry_run:
@@ -94,7 +91,7 @@ class ActuatorLayer:
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
         self.end_effector_pos = compute_end_effector_pos_from_joints(np.array(self.dh_joint_angles_actual_rad))
-        print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
+        # print(f"End Effector Position: x={self.end_effector_pos[0]:.3f}, y={self.end_effector_pos[1]:.3f}, z={self.end_effector_pos[2]:.3f}")
 
         teleop_joint_positions = self.teleop_device.get_action()
         teleop_joint_angles = [teleop_joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
@@ -116,7 +113,9 @@ class ActuatorLayer:
         assert len(joint_angle_cmd_mech) == JOINT_NAMES_AS_INDEX.__len__(), "Joint command length mismatch."
         self.action = {f"{JOINT_NAMES_AS_INDEX[i]}.pos": np.rad2deg(joint_angle_cmd_mech[i]) for i in range(len(joint_angle_cmd_mech))}
 
-        if self.dry_run is False:
+        if self.dry_run:
+            pass
+        else:
             self.robot.send_action(self.action)
         
         if self.use_visualizer:
