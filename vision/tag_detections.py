@@ -46,6 +46,12 @@ class Item:
 
 items = [Item("base", 0), Item("cup1", 1), Item("cup2", 2), Item("cup3", 3)]
 
+HEIGHT_OFFSET = 0.004
+def getItemPositions():
+    positions = []
+    for i in items:
+        positions.append((i.xrel, i.yrel, HEIGHT_OFFSET))
+
 def relative_pos(base, item):
     return ((item.x - base.x), (item.y - base.y))
 
