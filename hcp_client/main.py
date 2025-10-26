@@ -8,6 +8,7 @@ from typing import Callable
 import hcp_executor
 import json
 import asi1client
+import re
 
 hcp = hcp_executor.HCPExecutor()
 
@@ -16,12 +17,32 @@ try:
 except ASI1ClientError as e:
     print(f"Error initializing ASI1Client: {e}")
 
-messages = [
-    {"role": "system", "content": "You are a helpful AI assistant that can control hardware if asked."}
-]
+messages = []
+
+ready_for_user_input = False
 
 HOST = '127.0.0.1'
 PORT = 65432
+
+def extract_dashed_section(text):
+    """
+    Looks for a section delimited by five dashes (-----) at the start and end.
+    Returns:
+        inside: content between the dashes (exclusive)
+        outside: everything else
+        found: boolean indicating if section existed
+    """
+    # Regex to match content between two sets of 5+ dashes
+    pattern = r"-----\s*(.*?)\s*-----"
+    match = re.search(pattern, text, re.DOTALL)
+
+    if match:
+        inside = match.group(1).strip()
+        # everything before + after the section
+        outside = (text[:match.start()] + text[match.end():]).strip()
+        return inside, outside, True
+    else:
+        return None, text.strip(), False
 
 def bytes_to_json(byte_string):
     """
@@ -82,16 +103,39 @@ def running_tick(send_to: Callable[[tuple, bytes], None],
     Use send_to/broadcast/list_clients from here to drive real-time behavior.
     Keep it quick/non-blocking.
     """
-    try:
-        response = client.chat_completion(messages)
-        ai_reply = response["choices"][0]["message"]["content"].strip()
-        messages.append({"role": "assistant", "content": ai_reply})
-        action = json.loads(ai_reply)
-        hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"])
-    except ASI1ClientError as e:
-        print(f"[Error] {e}")
-    except Exception as e:
-        print(f"[Unexpected error] {e}")
+    if ready_for_user_input:
+        try:
+            user_input = input("You: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting...")
+            exit(0)
+
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            exit(0)
+
+        if not user_input:
+            return
+        
+        messages.append({"role": "user", "content": user_input})
+        ready_for_user_input = False
+    else:
+        # Add user message to history
+        try:
+            response = client.chat_completion(messages)
+            ai_reply = response["choices"][0]["message"]["content"].strip()
+            messages.append({"role": "assistant", "content": ai_reply})
+            inside, outside, isCommand = extract_dashed_section(ai_reply)
+            print(f"AI: {outside}\n")
+            if not isCommand:
+                ready_for_user_input = True
+                return
+            action = json.loads(inside)
+            if (hcp.execute_action(action["target_hardware"], action["toolname"], action["command_body"]))
+        except ASI1ClientError as e:
+            print(f"[Error] {e}")
+        except Exception as e:
+            print(f"[Unexpected error] {e}")
     
 
 # =========================
@@ -199,8 +243,10 @@ def start_server():
                 elif state == State.CONNECTING and now >= connecting_deadline:
                     print("[state] CONNECTING -> RUNNING")
                     state = State.RUNNING
-                    # optional: call a hook when entering running
-                    # (you can also do setup in running_tick)
+                    messages.append(
+                        {"role": "system", "content": "You are controlling these following pieces of hardware with the following actions:" + "I will give you commands and you can call any of these tools to fulfill them. If you need more info ask me. Whenever you want to call a tool you should put a ----- at the start and end of the call. the call should be a properly formatted json with a \"target_hardware\", \"toolname\" and \"command_body\" entry where command body is a nested json"}
+                    )
+                    ready_for_user_input = True
 
                 # --- event processing (common) ---
                 # Use a short timeout so RUNNING gets frequent ticks.
