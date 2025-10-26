@@ -58,12 +58,14 @@ class ActuatorLayer:
         leader_arm_elbow_location =compute_end_effector_pos_from_joints(
             self.teleop_dh_joint_angles_actual_rad[:3]
         )
+        
         # solve for the required elbow joint angle to reach this position
-        ik_solution = compute_inverse_kinematics_wrist_desired_pos(
+        ik_solution = compute_inverse_kinematics_elbow_desired_pos(
             leader_arm_elbow_location[0],
             leader_arm_elbow_location[1],
             leader_arm_elbow_location[2],
         )
+
         # send only the elbow joint command to the follower arm
         joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
         for i in range(len(ik_solution)):

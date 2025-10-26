@@ -7,7 +7,7 @@ import math
 import numpy as np
 from actuator.kinematics.dh_table import *
 
-def compute_inverse_kinematics_wrist_desired_pos(x, y, z):
+def compute_inverse_kinematics_elbow_desired_pos(x, y, z):
     """Compute inverse kinematics for a 3DOF arm.
 
     Args:
@@ -28,7 +28,7 @@ def compute_inverse_kinematics_wrist_desired_pos(x, y, z):
     # Solve standard 2 link inverse kinematics problem
     F = (delta_r**2 + s**2 - L3**2 - L4**2) / (2 * L3 * L4)
 
-    joint_3 = np.arctan2(np.sqrt(1 - F**2), F)  # elbow flex. 2 solutions, we take the elbow-up one (todo, mayb not?)
+    joint_3 = np.arctan2(-np.sqrt(1 - F**2), F)  # elbow flex. 2 solutions, we take the elbow-up one (todo, mayb not?)
     joint_2 = np.arctan2(s, delta_r) - np.arctan2(L4 * np.sin(joint_3), L3 + L4 * np.cos(joint_3))  # shoulder lift
 
     return np.array([joint_1, joint_2, joint_3])

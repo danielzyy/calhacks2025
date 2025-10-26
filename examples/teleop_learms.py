@@ -44,7 +44,7 @@ while True:
     # solve for inverse kinematics position of the 3rd joint
     joint_angles_for_ik_solution = joint_angles_dh[:3]
     pos_of_third_joint = compute_end_effector_pos_from_joints(np.array(joint_angles_for_ik_solution))
-    ik_solution = compute_inverse_kinematics_wrist_desired_pos(
+    ik_solution = compute_inverse_kinematics_elbow_desired_pos(
         pos_of_third_joint[0],
         pos_of_third_joint[1],
         pos_of_third_joint[2],
