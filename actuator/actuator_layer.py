@@ -45,6 +45,7 @@ class ActuatorLayer:
         self.use_visualizer = use_visualizer
         if use_visualizer:
             self.visualizer = Visualizer()
+            self.visualizer_count = 0
 
     def run_full_teleop(self):
         action = self.teleop_device.get_action()
@@ -61,7 +62,10 @@ class ActuatorLayer:
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
         
         if self.use_visualizer:
-            self.visualizer.plot(self.dh_joint_angles_actual_rad)
+            self.visualizer_count += 1
+            if self.visualizer_count % 10 == 0:
+                self.visualizer.plot(self.dh_joint_angles_actual_rad)
+                self.visualizer_count = 0 
 
     
 if __name__ == "__main__":
