@@ -7,7 +7,7 @@ import queue
 
 DEVICE_ID = 'SOARM100_ROBOT_ARM'
 DEVICE_DESC = """A robot arm capable of moving in 3D space and controlling a gripper.  The arm can move to specified (x, y, z) coordinates in mm, open and close its gripper, and set the wrist angle of the gripper. The robot starts at (170, 0, 150). The coordinate frame is aligned such that +X is forward, +Z is up, +Y is to the left when facing forward. The gripper is closed on init, with the wrist angle at 90 degrees."""
-HCP_HOST = "172.20.10.4"
+HCP_HOST = "10.235.118.92"
 HCP_PORT = 9000
 
 # Original JSON definition
