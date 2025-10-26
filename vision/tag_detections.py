@@ -120,7 +120,14 @@ def estimate_pose_best_ippe(corners, marker_length, K, D):
 
     return np.asarray(r_out), np.asarray(t_out)
 
-def main():
+
+cap = None
+detector = None
+
+def camera_setup():
+    global cap
+    global detector
+
     # --- Detector setup with subpixel refinement ---
     aruco_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_APRILTAG_36h11)
 
@@ -149,59 +156,57 @@ def main():
         K_runtime = scale_K(camera_matrix, CALIB_IMAGE_SIZE, (W, H))
         print(f"Scaled K from {CALIB_IMAGE_SIZE} -> {(W, H)}")
 
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
+def camer_run():
+    global cap
+    global detector
 
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        corners, ids, _ = detector.detectMarkers(gray)
+    ok, frame = cap.read()
+    if not ok:
+        return None
 
-        if ids is not None:
-            for i, corner in enumerate(corners):
-                # Flatten the corner array
-                pts = corner[0].astype(int)
-                (ptA, ptB, ptC, ptD) = pts
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    corners, ids, _ = detector.detectMarkers(gray)
 
-                # Compute center
-                cX = int(np.mean(pts[:, 0]))
-                cY = int(np.mean(pts[:, 1]))
+    if ids is not None:
+        for i, corner in enumerate(corners):
+            # Flatten the corner array
+            pts = corner[0].astype(int)
+            (ptA, ptB, ptC, ptD) = pts
 
-                # Compute average side length as size estimate
-                side_lengths = [
-                    np.linalg.norm(ptA - ptB),
-                    np.linalg.norm(ptB - ptC),
-                    np.linalg.norm(ptC - ptD),
-                    np.linalg.norm(ptD - ptA)
-                ]
-                avg_size = np.mean(side_lengths)
+            # Compute center
+            cX = int(np.mean(pts[:, 0]))
+            cY = int(np.mean(pts[:, 1]))
 
-                # Draw marker outline and center
-                cv.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-                cv.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
+            # Compute average side length as size estimate
+            side_lengths = [
+                np.linalg.norm(ptA - ptB),
+                np.linalg.norm(ptB - ptC),
+                np.linalg.norm(ptC - ptD),
+                np.linalg.norm(ptD - ptA)
+            ]
+            avg_size = np.mean(side_lengths)
 
-                # Draw tag ID
-                tag_id = int(ids[i])
-                cv.putText(frame, f"ID {tag_id}", (ptA[0], ptA[1] - 10),
-                            cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # Draw marker outline and center
+            cv.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+            cv.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
 
-                # Print info
-                for i in items:
-                    if i.idx == tag_id:
-                        i.setPosition(cX, cY, avg_size)
-                        i.getRelPosition(items[0])
+            # Draw tag ID
+            tag_id = int(ids[i])
+            cv.putText(frame, f"ID {tag_id}", (ptA[0], ptA[1] - 10),
+                        cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        for i in items:
-            print(f"Item {i.name}, ID: {i.idx}, Center: ({i.x}, {i.y}), Size: {i.size}px, xrel: {i.xrel}, yrel: {i.yrel}")
-            
+            # Print info
+            for i in items:
+                if i.idx == tag_id:
+                    i.setPosition(cX, cY, avg_size)
+                    i.getRelPosition(items[0])
 
-        # Show video
-        cv.imshow("Detection", frame)
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
+    for i in items:
+        print(f"Item {i.name}, ID: {i.idx}, Center: ({i.x}, {i.y}), Size: {i.size}px, xrel: {i.xrel}, yrel: {i.yrel}")
 
-    cap.release()
-    cv.destroyAllWindows()
-
-if __name__ == "__main__":
-    main()
+    # Show video
+    cv.imshow("Detection", frame)
+    if cv.waitKey(1) & 0xFF == ord('q'):
+        return None
+    
+    return items

@@ -70,7 +70,7 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.5)
+        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, np.deg2rad(90.0), 0.5)
         self.request_fresh = True
 
         self.speed_limit_m_per_s = 0.6  # m/s
@@ -78,7 +78,10 @@ class ActuatorLayer:
         # misc
         self.gripper_cmd_scale_y = [0.1027924, 1.7260]
         self.time_prev = time.time()
-        self.is_close_to_target = False
+        self.close_to_target = False
+
+    def is_close_to_target(self):
+        return self.close_to_target
 
     def update_robot_state(self):
         if self.dry_run:
@@ -205,12 +208,11 @@ class ActuatorLayer:
         joint_cmd_dh[5] = gripper_cmd  # gripper
 
         # update if we're close to the target
-        self.is_close_to_target = is_close_to_target(
+        self.close_to_target = is_close_to_target(
             current_pos=self.end_effector_pos,
             target_pos=request_pos,
-            threshold_m=0.01
+            threshold_m=0.075
         )
-
         return joint_cmd_dh
 
 

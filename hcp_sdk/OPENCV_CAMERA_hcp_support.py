@@ -1,42 +1,26 @@
-"""SOARM100_ROBOT_ARM_hcp_support.py — Auto-generated HCP SDK TCP Client"""
+"""OPENCV_CAMERA_hcp_support.py — Auto-generated HCP SDK TCP Client"""
 import json
 import socket
 import threading
 import time
 import queue
 
-DEVICE_ID = 'SOARM100_ROBOT_ARM'
-DEVICE_DESC = """A robot arm capable of moving in 3D space and controlling a gripper."""
+DEVICE_ID = 'OPENCV_CAMERA'
+DEVICE_DESC = """A camera that is parsed through opencv to return distance between an april tag and the arm."""
 HCP_HOST = "127.0.0.1"
 HCP_PORT = 9000
 
 # Original JSON definition
-HCP_DEVICE_JSON = { 'available_commands': { 'control_grip': { 'freetext_desc': 'Opens or closes '
-                                                             'the gripper.',
-                                            'params': [{'closed': 'bool'}]},
-                          'move_arm': { 'freetext_desc': 'Moves the arm to the '
-                                                         'specified 3D '
-                                                         'coordinates, each '
-                                                         'given in mm. Max '
-                                                         'range is - x: [0, '
-                                                         '250], y: [-250, '
-                                                         '250], z: [0, 200] '
-                                                         'mm.',
-                                        'params': [ {'x': 'int'},
-                                                    {'y': 'int'},
-                                                    {'z': 'int'}]},
-                          'set_wrist_angle': { 'freetext_desc': 'Sets the '
-                                                                'wrist angle '
-                                                                'of the '
-                                                                'gripper in '
-                                                                'degrees. 0deg '
-                                                                'is flat, '
-                                                                '90deg is '
-                                                                'vertical.',
-                                               'params': [{'angle': 'float'}]}},
-  'metadata': { 'device_id': 'SOARM100_ROBOT_ARM',
-                'freetext_desc': 'A robot arm capable of moving in 3D space '
-                                 'and controlling a gripper.'}}
+HCP_DEVICE_JSON = { 'available_commands': { 'get_tags': { 'freetext_desc': 'Returns the '
+                                                         'coordinates of every '
+                                                         'april tag in '
+                                                         'reference to the '
+                                                         'robot arm.',
+                                        'params': []}},
+  'metadata': { 'device_id': 'OPENCV_CAMERA',
+                'freetext_desc': 'A camera that is parsed through opencv to '
+                                 'return distance between an april tag and the '
+                                 'arm.'}}
 
 class HCPClient:
     def __init__(self):
