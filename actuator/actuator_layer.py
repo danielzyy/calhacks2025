@@ -63,7 +63,7 @@ class ActuatorLayer:
             self.visualizer = Visualizer()
             self.visualizer_count = 0
 
-        self.request = ActuatorLayerRequest(0.152, 0.0, 0.054, 0.0, 0.1)
+        self.request = ActuatorLayerRequest(0.2, 0.0, 0.1, 0.0, 0.1)
         self.request_fresh = True
 
         # misc
