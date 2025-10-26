@@ -17,7 +17,11 @@ HCP_DEVICE_JSON = { 'available_commands': { 'control_grip': { 'freetext_desc': '
                           'move_arm': { 'freetext_desc': 'Moves the arm to the '
                                                          'specified 3D '
                                                          'coordinates, each '
-                                                         'given in mm.',
+                                                         'given in mm. Max '
+                                                         'range is - x: [0, '
+                                                         '250], y: [-250, '
+                                                         '250], z: [0, 200] '
+                                                         'mm.',
                                         'params': [ {'x': 'int'},
                                                     {'y': 'int'},
                                                     {'z': 'int'}]},

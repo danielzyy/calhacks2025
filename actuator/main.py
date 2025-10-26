@@ -13,8 +13,6 @@ is_actuator_close_to_target_prev = False
 
 while True:
     actuator_layer.step()
-    is_actuator_close_to_target_now = actuator_layer.is_close_to_target()
-    
     try:
         # Non-blocking check for new HCP commands
         action, payload = client.events.get_nowait()        
@@ -42,6 +40,8 @@ while True:
         # handle the command
         result = {"status": "ok", "message": f"Handled {action}"}
 
+        is_actuator_close_to_target_now = actuator_layer.is_close_to_target()
+        print(f"Is actuator close to target? {is_actuator_close_to_target_now}")
         # send the response back to HCP
         if is_actuator_close_to_target_now and is_actuator_close_to_target_prev is False:
             print("[EVENT] reached_target")

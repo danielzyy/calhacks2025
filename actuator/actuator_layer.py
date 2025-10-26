@@ -211,9 +211,8 @@ class ActuatorLayer:
         self.close_to_target = is_close_to_target(
             current_pos=self.end_effector_pos,
             target_pos=request_pos,
-            threshold_m=0.05
+            threshold_m=0.075
         )
-
         return joint_cmd_dh
 
 
