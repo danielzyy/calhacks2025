@@ -99,6 +99,21 @@ class HCPExecutor:
         except Exception as e:
             print(f"⚠️ TCP send failed for {device_id}:{device['port']} — {e}")
             return False
+        
+    # ---------- LLM Integration ----------
+    def get_device_llm_context_str(self, device_id: str) -> str:
+        """Return device info in an LLM-friendly string format."""
+        if device_id not in self.devices:
+            raise ValueError(f"Device '{device_id}' not found.")
+        
+        device = self.devices[device_id]
+        lines = [f"Device '{device_id}': {device['description']}", "Available actions:"]
+        
+        for action_name, action_info in device["actions"].items():
+            param_str = ", ".join([f"{name}: {ptype.__name__}" for name, ptype in action_info["params"]])
+            lines.append(f" - {action_name}({param_str}) → {action_info['description']}")
+        
+        return "\n".join(lines)
 
     # ---------- Query helpers ----------
     def list_devices(self) -> Dict[str, Dict[str, Any]]:
