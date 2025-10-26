@@ -8,8 +8,9 @@ from actuator_layer import ActuatorLayer, Mode, ActuatorLayerRequest
 client = HCPClient()
 client.start()
 
+requestActive = False
+
 actuator_layer = ActuatorLayer(Mode.AUTONOMOUS, use_visualizer=True, dry_run=False, virtual=False)
-is_actuator_close_to_target_prev = False
 
 while True:
     actuator_layer.step()
@@ -39,18 +40,19 @@ while True:
 
         # handle the command
         result = {"status": "ok", "message": f"Handled {action}"}
+        requestActive = True
+    
+    except queue.Empty:
+        pass
 
+    if requestActive:
         is_actuator_close_to_target_now = actuator_layer.is_close_to_target()
         print(f"Is actuator close to target? {is_actuator_close_to_target_now}")
         # send the response back to HCP
-        if is_actuator_close_to_target_now and is_actuator_close_to_target_prev is False:
+        if is_actuator_close_to_target_now:
             print("[EVENT] reached_target")
             client.send_response(action, result)
-
-        is_actuator_close_to_target_prev = is_actuator_close_to_target_now
-
-    except queue.Empty:
-        pass
+            requestActive = False
 
     # other main loop tasks
     time.sleep(0.01)
