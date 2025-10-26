@@ -24,6 +24,7 @@ class ActuatorLayer:
     def __init__(self, mode, dry_run=False, use_visualizer=False):
         assert mode in Mode, "Invalid mode specified."
         self.mode = mode
+        self.dry_run = dry_run
 
         ports = detect_so101_ports()
 
@@ -62,8 +63,8 @@ class ActuatorLayer:
             leader_arm_location[2],
         )
         # send only the elbow joint command to the follower arm
-        joint_cmd_dh = np.zeros(5)
-        for i in range(3):
+        joint_cmd_dh = np.zeros(len(JOINT_NAMES_AS_INDEX))
+        for i in range(len(ik_solution)):
             joint_cmd_dh[i] = ik_solution[i]
 
         # theta_2 + theta_3 + theta_4 = theta_5
@@ -73,6 +74,8 @@ class ActuatorLayer:
 
         joint_cmd_dh[3] = -np.pi/2 - (joint_cmd_dh[1] + joint_cmd_dh[2])
         joint_cmd_dh[4] = 0.0  # neutral wrist roll
+        joint_cmd_dh[5] = 0.0
+
 
         joint_cmd_mech = dh_to_mech_angles(joint_cmd_dh)
         assert len(joint_cmd_mech) == JOINT_NAMES_AS_INDEX.__len__(), "Joint command length mismatch."
@@ -81,7 +84,12 @@ class ActuatorLayer:
         self.robot.send_action(action)
 
     def update_robot_state(self):
-        joint_positions = self.robot.get_observation()
+        if self.dry_run:
+            if not hasattr(self, 'action'):
+                self.action = {f"{joint}.pos": 0.0 for joint in JOINT_NAMES_AS_INDEX}
+            joint_positions = self.action
+        else:
+            joint_positions = self.robot.get_observation()
         joint_angles = [joint_positions[f"{joint}.pos"] for joint in JOINT_NAMES_AS_INDEX]
         self.mech_joint_angles_actual_rad = [np.deg2rad(angle) for angle in joint_angles]
         self.dh_joint_angles_actual_rad = mech_to_dh_angles(self.mech_joint_angles_actual_rad)
@@ -106,8 +114,10 @@ class ActuatorLayer:
         
         joint_angle_cmd_mech = dh_to_mech_angles(joint_angle_cmd)
         assert len(joint_angle_cmd_mech) == JOINT_NAMES_AS_INDEX.__len__(), "Joint command length mismatch."
-        action = {f"{JOINT_NAMES_AS_INDEX[i]}.pos": np.rad2deg(joint_angle_cmd_mech[i]) for i in range(len(joint_angle_cmd_mech))}
-        self.robot.send_action(action)
+        self.action = {f"{JOINT_NAMES_AS_INDEX[i]}.pos": np.rad2deg(joint_angle_cmd_mech[i]) for i in range(len(joint_angle_cmd_mech))}
+
+        if self.dry_run is False:
+            self.robot.send_action(self.action)
         
         if self.use_visualizer:
             self.visualizer_count += 1
@@ -124,10 +134,15 @@ if __name__ == "__main__":
         choices=[mode.name for mode in Mode],
         default="FULL_TELEOP"
     )
+    parser.add_argument(
+        "--dry_run",
+        action="store_true",
+        help="If set, runs in dry run mode without sending commands to the robot."
+    )
     args = parser.parse_args()
 
     mode = Mode(args.mode)
-    actuator_layer = ActuatorLayer(mode, use_visualizer=True)
+    actuator_layer = ActuatorLayer(mode, use_visualizer=True, dry_run=args.dry_run)
 
     while True:
         actuator_layer.step()
